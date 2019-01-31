@@ -32,13 +32,24 @@ size_t toHex(const void * arr, size_t arraySize, ByteStream * s){
     uint8_t * array = (uint8_t *) arr;
     char b[3] = "";
     for(size_t i=0; i < arraySize; i++){
-        sprintf(b, "%0x", array[i]);
+        uint8_t v = array[i];
+        char c = (v >> 4) + '0';
+        if(c > '9'){
+            c += 'a'-'9'-1;
+        }
+        b[0] = c;
+        c = (v & 0x0F) + '0';
+        if(c > '9'){
+            c += 'a'-'9'-1;
+        }
+        b[1] = c;
+        // sprintf(b, "%0x", array[i]);
         s->write((uint8_t * )b, 2);
     }
     return 2*arraySize;
 }
 
-#ifdef ARDUINO
+#if USE_ARDUINO_STRING
 String toHex(const uint8_t * array, size_t arraySize){
     char * output;
     size_t outputSize = arraySize * 2 + 1;
@@ -205,7 +216,7 @@ size_t toBase58(const uint8_t * array, size_t arraySize, char * output, size_t o
     memset(output + l, 0, outputSize-l);
     return l;
 }
-#ifdef ARDUINO
+#if USE_ARDUINO_STRING
 String toBase58(const uint8_t * array, size_t arraySize){
     size_t len = toBase58Length(array, arraySize) + 1; // +1 for null terminator
     char * buf = (char *)malloc(len);
@@ -230,7 +241,7 @@ size_t toBase58Check(const uint8_t * array, size_t arraySize, char * output, siz
     free(arr);
     return l;
 }
-#ifdef ARDUINO
+#if USE_ARDUINO_STRING
 String toBase58Check(const uint8_t * array, size_t arraySize){
     size_t len = toBase58Length(array, arraySize) + 5; // +4 checksum +1 for null terminator
     char * buf = (char *)malloc(len);
@@ -304,7 +315,7 @@ size_t fromBase58(const char * encoded, size_t encodedSize, uint8_t * output, si
     return size-shift;
 }
 
-#ifdef ARDUINO
+#if USE_ARDUINO_STRING
 size_t fromBase58(String encoded, uint8_t * output, size_t outputSize){
     size_t len = encoded.length()+1; // +1 for null terminator
     char * arr = (char *)malloc(len);
@@ -336,7 +347,7 @@ size_t fromBase58Check(const char * encoded, size_t encodedSize, uint8_t * outpu
     return l-4;
 }
 
-#ifdef ARDUINO
+#if USE_ARDUINO_STRING
 size_t fromBase58Check(String encoded, uint8_t * output, size_t outputSize){
     size_t len = encoded.length()+1; // +1 for null terminator
     char * arr = (char *)malloc(len);

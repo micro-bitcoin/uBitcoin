@@ -8,6 +8,10 @@
 #include "utility/trezor/sha2.h"
 #include "utility/segwit_addr.h"
 
+#if USE_STD_STRING
+using std::string;
+#endif
+
 // ---------------------------------------------------------------- HDPrivateKey class
 
 // HD key prefixes are described here:
@@ -109,6 +113,19 @@ HDPrivateKey::HDPrivateKey(const char * xprvArr){
     memcpy(secret, arr+46, 32);
     privateKey = PrivateKey(secret, true, testnet);
 }
+HDPrivateKey::HDPrivateKey(const char * mnemonic, size_t mnemonicSize, const char * password, size_t passwordSize, bool use_testnet){
+    fromMnemonic(mnemonic, mnemonicSize, password, passwordSize, use_testnet);
+}
+#if USE_STD_STRING
+HDPrivateKey::HDPrivateKey(std::string mnemonic, std::string password, bool use_testnet){
+    fromMnemonic(mnemonic, password, use_testnet);
+}
+#endif
+#if USE_ARDUINO_STRING
+HDPrivateKey::HDPrivateKey(String mnemonic, String password, bool use_testnet){
+    fromMnemonic(mnemonic, password, use_testnet);
+}
+#endif
 HDPrivateKey::~HDPrivateKey(void) {
     // erase chain code from memory
     memset(chainCode, 0, 32);
@@ -155,6 +172,16 @@ int HDPrivateKey::fromMnemonic(const char * mnemonic, size_t mnemonicSize, const
     fromSeed(seed, sizeof(seed), use_testnet);
     return 1;
 }
+#if USE_STD_STRING
+int HDPrivateKey::fromMnemonic(std::string mnemonic, std::string password, bool use_testnet){
+    return fromMnemonic(mnemonic.c_str(), mnemonic.length(), password.c_str(), password.length(), use_testnet);
+}
+#endif
+#if USE_ARDUINO_STRING
+int HDPrivateKey::fromMnemonic(String mnemonic, String password, bool use_testnet){
+    return fromMnemonic(mnemonic.c_str(), mnemonic.length(), password.c_str(), password.length(), use_testnet);
+}
+#endif
 bool HDPrivateKey::isValid() const{
     return privateKey.isValid();
 }
@@ -201,7 +228,7 @@ int HDPrivateKey::address(char * addr, size_t len) const{
             return privateKey.address(addr, len);
     }
 }
-#ifdef ARDUINO
+#if USE_ARDUINO_STRING
 String HDPrivateKey::xprv() const{
     char arr[112] = { 0 };
     xprv(arr, sizeof(arr));
@@ -221,6 +248,23 @@ size_t HDPrivateKey::printTo(Print &p) const{
     char arr[112] = { 0 };
     xprv(arr, sizeof(arr));
     return p.print(arr);
+}
+#endif
+#if USE_STD_STRING
+string HDPrivateKey::xprv() const{
+    char arr[112] = { 0 };
+    xprv(arr, sizeof(arr));
+    return string(arr);
+}
+string HDPrivateKey::address() const{
+    switch(type){
+        case P2WPKH:
+            return privateKey.segwitAddress();
+        case P2SH_P2WPKH:
+            return privateKey.nestedSegwitAddress();
+        default:
+            return privateKey.address();
+    }
 }
 #endif
 int HDPrivateKey::xpub(char * arr, size_t len) const{
@@ -260,13 +304,11 @@ int HDPrivateKey::xpub(char * arr, size_t len) const{
     memcpy(hex+45, sec, secLen);
     return toBase58Check(hex, 45+secLen, arr, len);
 }
-#ifdef ARDUINO
-String HDPrivateKey::xpub() const{
-    char arr[112] = { 0 };
-    xpub(arr, sizeof(arr));
-    return String(arr);
+HDPublicKey HDPrivateKey::xpub() const{
+  char arr[112];
+  xpub(arr, sizeof(arr));
+  return HDPublicKey(arr);
 }
-#endif
 // TODO: refactor to single function!
 HDPrivateKey HDPrivateKey::child(uint32_t index) const{
     HDPrivateKey child;
@@ -556,7 +598,7 @@ int HDPublicKey::address(char * addr, size_t len) const{
             return publicKey.address(addr, len, testnet);
     }
 }
-#ifdef ARDUINO
+#if USE_ARDUINO_STRING
 String HDPublicKey::xpub() const{
     char arr[114] = { 0 };
     xpub(arr, sizeof(arr));
@@ -576,6 +618,23 @@ size_t HDPublicKey::printTo(Print &p) const{
     char arr[114] = { 0 };
     xpub(arr, sizeof(arr));
     return p.print(arr);
+}
+#endif
+#if USE_STD_STRING
+string HDPublicKey::xpub() const{
+    char arr[114] = { 0 };
+    xpub(arr, sizeof(arr));
+    return string(arr);
+}
+string HDPublicKey::address() const{
+    switch(type){
+        case P2WPKH:
+            return publicKey.segwitAddress(testnet);
+        case P2SH_P2WPKH:
+            return publicKey.nestedSegwitAddress(testnet);
+        default:
+            return publicKey.address(testnet);
+    }
 }
 #endif
 HDPublicKey HDPublicKey::child(uint32_t index) const{

@@ -65,7 +65,7 @@ Script::Script(const char * address){
         }
     }
 }
-#ifdef ARDUINO
+#if USE_ARDUINO_STRING
 Script::Script(const String address){
     size_t len = address.length()+1; // +1 for null terminator
     char * buf = (char *)calloc(len, sizeof(uint8_t));
@@ -245,7 +245,7 @@ size_t Script::address(char * buffer, size_t len, bool testnet) const{
     }
     return 0;
 }
-#ifdef ARDUINO
+#if USE_ARDUINO_STRING
 String Script::address(bool testnet) const{
     char buffer[100] = { 0 };
     size_t l = address(buffer, sizeof(buffer), testnet);
@@ -351,7 +351,7 @@ Script Script::scriptPubkey() const{
     return sc;
 }
 
-#ifdef ARDUINO
+#if USE_ARDUINO_STRING
 size_t Script::printTo(Print& p) const{
     // p.print("Print!");
     if(scriptLen>0){

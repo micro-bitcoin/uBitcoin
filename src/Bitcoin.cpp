@@ -9,6 +9,9 @@
 #include "utility/trezor/rfc6979.h"
 #include "utility/segwit_addr.h"
 
+#if USE_STD_STRING
+using std::string;
+#endif
 // ---------------------------------------------------------------- Signature class
 
 Signature::Signature(){
@@ -28,7 +31,7 @@ Signature::Signature(const uint8_t * der, size_t derLen){
 Signature::Signature(ByteStream &s){
     parse(s);
 }
-#ifdef ARDUINO
+#if USE_ARDUINO_STRING
 Signature::Signature(const String der){
     parseHex(der);
 }
@@ -170,7 +173,7 @@ size_t Signature::parseHex(const char * hex){
         return 0;
     }
 }
-#ifdef ARDUINO
+#if USE_ARDUINO_STRING
 size_t Signature::parseHex(const String hex){
     size_t len = hex.length();
     char * arr = (char *)calloc(len+1, sizeof(char));
@@ -231,7 +234,7 @@ size_t Signature::der(ByteStream &s) const{
     s.write(arr, l);
     return l;
 }
-#ifdef ARDUINO
+#if USE_ARDUINO_STRING
 Signature::operator String(){
     uint8_t arr[72] = { 0 };
     int len = der(arr, sizeof(arr));
@@ -299,7 +302,7 @@ size_t PublicKey::sec(uint8_t * sec, size_t len) const{
         return 65;
     }
 }
-#ifdef ARDUINO
+#if USE_ARDUINO_STRING
 String PublicKey::sec() const{
     uint8_t sec_arr[65] = { 0 };
     int len = sec(sec_arr, sizeof(sec_arr));
@@ -337,11 +340,18 @@ int PublicKey::address(char * address, size_t len, bool testnet) const{
 
     return toBase58Check(addr, 21, address, len);
 }
-#ifdef ARDUINO
+#if USE_ARDUINO_STRING
 String PublicKey::address(bool testnet) const{
     char addr[40] = { 0 };
     address(addr, sizeof(addr), testnet);
     return String(addr);
+}
+#endif
+#if USE_STD_STRING
+string PublicKey::address(bool testnet) const{
+    char addr[40] = { 0 };
+    address(addr, sizeof(addr), testnet);
+    return string(addr);
 }
 #endif
 int PublicKey::segwitAddress(char address[], size_t len, bool testnet) const{
@@ -360,11 +370,18 @@ int PublicKey::segwitAddress(char address[], size_t len, bool testnet) const{
     segwit_addr_encode(address, prefix, 0, hash, 20);
     return 76;
 }
-#ifdef ARDUINO
+#if USE_ARDUINO_STRING
 String PublicKey::segwitAddress(bool testnet) const{
     char addr[76] = { 0 };
     segwitAddress(addr, sizeof(addr), testnet);
     return String(addr);
+}
+#endif
+#if USE_STD_STRING
+string PublicKey::segwitAddress(bool testnet) const{
+    char addr[76] = { 0 };
+    segwitAddress(addr, sizeof(addr), testnet);
+    return string(addr);
 }
 #endif
 int PublicKey::nestedSegwitAddress(char address[], size_t len, bool testnet) const{
@@ -386,11 +403,18 @@ int PublicKey::nestedSegwitAddress(char address[], size_t len, bool testnet) con
 
     return toBase58Check(addr, 21, address, len);
 }
-#ifdef ARDUINO
+#if USE_ARDUINO_STRING
 String PublicKey::nestedSegwitAddress(bool testnet) const{
     char addr[40] = { 0 };
     nestedSegwitAddress(addr, sizeof(addr), testnet);
     return String(addr);
+}
+#endif
+#if USE_STD_STRING
+string PublicKey::nestedSegwitAddress(bool testnet) const{
+    char addr[40] = { 0 };
+    nestedSegwitAddress(addr, sizeof(addr), testnet);
+    return string(addr);
 }
 #endif
 Script PublicKey::script(int type) const{
@@ -402,7 +426,7 @@ bool PublicKey::verify(const Signature sig, const uint8_t hash[32]) const{
     const struct uECC_Curve_t * curve = uECC_secp256k1();
     return uECC_verify(point, hash, 32, signature, curve);
 }
-#ifdef ARDUINO
+#if USE_ARDUINO_STRING
 PublicKey::operator String(){
     uint8_t arr[65] = { 0 };
     int len = sec(arr, sizeof(arr));
@@ -413,7 +437,7 @@ bool PublicKey::isValid() const{
     const struct uECC_Curve_t * curve = uECC_secp256k1();
     return uECC_valid_public_key(point, curve);
 }
-#ifdef ARDUINO
+#if USE_ARDUINO_STRING
 size_t PublicKey::printTo(Print& p) const{
     uint8_t arr[65] = { 0 };
     int len = sec(arr, sizeof(arr));
@@ -460,7 +484,7 @@ int PrivateKey::wif(char * wifArr, size_t wifSize) const{
     memset(wifHex, 0, sizeof(wifHex)); // secret should not stay in RAM
     return l;
 }
-#ifdef ARDUINO
+#if USE_ARDUINO_STRING
 String PrivateKey::wif() const{
     char wifString[53] = { 0 };
     wif(wifString, sizeof(wifString));
@@ -534,7 +558,7 @@ int PrivateKey::segwitAddress(char * address, size_t len) const{
 int PrivateKey::nestedSegwitAddress(char * address, size_t len) const{
     return publicKey().nestedSegwitAddress(address, len, testnet);
 }
-#ifdef ARDUINO
+#if USE_ARDUINO_STRING
 String PrivateKey::address() const{
     return publicKey().address(testnet);
 }
@@ -542,6 +566,17 @@ String PrivateKey::segwitAddress() const{
     return publicKey().segwitAddress(testnet);
 }
 String PrivateKey::nestedSegwitAddress() const{
+    return publicKey().nestedSegwitAddress(testnet);
+}
+#endif
+#if USE_STD_STRING
+string PrivateKey::address() const{
+    return publicKey().address(testnet);
+}
+string PrivateKey::segwitAddress() const{
+    return publicKey().segwitAddress(testnet);
+}
+string PrivateKey::nestedSegwitAddress() const{
     return publicKey().nestedSegwitAddress(testnet);
 }
 #endif
@@ -598,7 +633,7 @@ bool PrivateKey::operator!=(const int& other) const{
 PrivateKey::PrivateKey(const char * wifArr){
     fromWIF(wifArr);
 }
-#ifdef ARDUINO
+#if USE_ARDUINO_STRING
 PrivateKey::PrivateKey(const String wifString){
     char * ch;
     int len = wifString.length()+1;

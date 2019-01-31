@@ -1,7 +1,9 @@
 #ifndef __HASH_H__18NLNNCSJ2
 #define __HASH_H__18NLNNCSJ2
 
-#ifdef ARDUINO
+#include "uBitcoin_conf.h"
+
+#if USE_ARDUINO_STRING
 #include "WString.h"
 #endif
 
@@ -32,7 +34,7 @@ public:
 
 int rmd160(const uint8_t * data, size_t len, uint8_t hash[20]);
 int rmd160(const char * data, size_t len, uint8_t hash[20]);
-#ifdef ARDUINO
+#if USE_ARDUINO_STRING
 int rmd160(const String data, uint8_t hash[20]);
 #endif
 
@@ -51,7 +53,7 @@ protected:
 
 int sha256(const uint8_t * data, size_t len, uint8_t hash[32]);
 int sha256(const char * data, size_t len, uint8_t hash[32]);
-#ifdef ARDUINO
+#if USE_ARDUINO_STRING
 int sha256(const String data, uint8_t hash[32]);
 #endif
 
@@ -76,7 +78,7 @@ protected:
 int hash160(const uint8_t * data, size_t len, uint8_t hash[20]);
 int hash160(const uint8_t * data, size_t len, uint8_t hash[20]);
 int hash160(const char * data, size_t len, uint8_t hash[20]);
-#ifdef ARDUINO
+#if USE_ARDUINO_STRING
 int hash160(const String data, uint8_t hash[20]);
 #endif
 
@@ -90,7 +92,7 @@ public:
 
 int doubleSha(const uint8_t * data, size_t len, uint8_t hash[32]);
 int doubleSha(const char * data, size_t len, uint8_t hash[32]);
-#ifdef ARDUINO
+#if USE_ARDUINO_STRING
 int doubleSha(const String data, uint8_t hash[32]);
 #endif
 
@@ -105,7 +107,7 @@ int sha512Hmac(const uint8_t * key, size_t keyLen, const uint8_t * data, size_t 
 
 int sha512(const uint8_t * data, size_t len, uint8_t hash[64]);
 int sha512(const char * data, size_t len, uint8_t hash[64]);
-#ifdef ARDUINO
+#if USE_ARDUINO_STRING
 int sha512(const String data, uint8_t hash[64]);
 #endif
 

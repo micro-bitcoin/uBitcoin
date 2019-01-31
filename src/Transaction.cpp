@@ -146,16 +146,16 @@ TransactionInput &TransactionInput::operator=(TransactionInput const &other){
     scriptPubKey = other.scriptPubKey;
     return *this;
 };
-#ifdef ARDUINO
-TransactionInput::operator String(){
-    size_t len = length();
-    uint8_t * ser;
-    ser = (uint8_t *)calloc(len, sizeof(uint8_t));
-    serialize(ser, len);
-    String s = toHex(ser, len);
-    free(ser);
-    return s;
-};
+#if USE_ARDUINO_STRING
+// TransactionInput::operator String(){
+//     size_t len = length();
+//     uint8_t * ser;
+//     ser = (uint8_t *)calloc(len, sizeof(uint8_t));
+//     serialize(ser, len);
+//     String s = toHex(ser, len);
+//     free(ser);
+//     return s;
+// };
 #endif
 
 TransactionOutput::TransactionOutput(void){
@@ -172,7 +172,7 @@ TransactionOutput::TransactionOutput(uint64_t send_amount, char address[]){
     Script sc(address);
     scriptPubKey = sc;
 }
-#ifdef ARDUINO
+#if USE_ARDUINO_STRING
 TransactionOutput::TransactionOutput(uint64_t send_amount, String address){
     amount = send_amount;
     Script sc(address);
@@ -188,7 +188,7 @@ TransactionOutput::TransactionOutput(char address[], uint64_t send_amount){
     Script sc(address);
     scriptPubKey = sc;
 }
-#ifdef ARDUINO
+#if USE_ARDUINO_STRING
 TransactionOutput::TransactionOutput(String address, uint64_t send_amount){
     amount = send_amount;
     Script sc(address);
@@ -224,7 +224,7 @@ size_t TransactionOutput::length(){
 size_t TransactionOutput::address(char * buf, size_t len, bool testnet){
     return scriptPubKey.address(buf, len, testnet);
 }
-#ifdef ARDUINO
+#if USE_ARDUINO_STRING
 String TransactionOutput::address(bool testnet){
     return scriptPubKey.address(testnet);
 }
@@ -256,16 +256,16 @@ TransactionOutput &TransactionOutput::operator=(TransactionOutput const &other){
     scriptPubKey = other.scriptPubKey;
     return *this;
 };
-#ifdef ARDUINO
-TransactionOutput::operator String(){
-    size_t len = length();
-    uint8_t * ser;
-    ser = (uint8_t *)calloc(len, sizeof(uint8_t));
-    serialize(ser, len);
-    String s = toHex(ser, len);
-    free(ser);
-    return s;
-};
+#if USE_ARDUINO_STRING
+// TransactionOutput::operator String(){
+//     size_t len = length();
+//     uint8_t * ser;
+//     ser = (uint8_t *)calloc(len, sizeof(uint8_t));
+//     serialize(ser, len);
+//     String s = toHex(ser, len);
+//     free(ser);
+//     return s;
+// };
 #endif
 
 // TODO: copy constructor, = operator
@@ -657,7 +657,7 @@ int Tx::id(uint8_t id_arr[32]){
     }
     return 0;
 }
-#ifdef ARDUINO
+#if USE_ARDUINO_STRING
 String Tx::id(){
     uint8_t id_arr[32];
     id(id_arr);
@@ -845,14 +845,14 @@ Signature Tx::signInput(uint8_t inputIndex, PrivateKey pk){
     PublicKey pubkey = pk.publicKey();
     return signInput(inputIndex, pk, pubkey.script());
 }
-#ifdef ARDUINO
-Tx::operator String(){
-    size_t len = length();
-    uint8_t * ser;
-    ser = (uint8_t *)calloc(len, sizeof(uint8_t));
-    serialize(ser, len);
-    String s = toHex(ser, len);
-    free(ser);
-    return s;
-};
+#if USE_ARDUINO_STRING
+// Tx::operator String(){
+//     size_t len = length();
+//     uint8_t * ser;
+//     ser = (uint8_t *)calloc(len, sizeof(uint8_t));
+//     serialize(ser, len);
+//     String s = toHex(ser, len);
+//     free(ser);
+//     return s;
+// };
 #endif

@@ -9,7 +9,7 @@ static size_t hashData(HashAlgorithm * algo, const uint8_t * data, size_t len, u
     return algo->end(hash);
 }
 
-#if defined(ARDUINO) && ARDUINO >= 100
+#if USE_ARDUINO_STRING
 static size_t hashString(HashAlgorithm * algo, const String s, uint8_t * hash){
     size_t len = s.length();
     char * arr;
@@ -30,7 +30,7 @@ int rmd160(const uint8_t * data, size_t len, uint8_t hash[20]){
 int rmd160(const char * data, size_t len, uint8_t hash[20]){
     return rmd160((uint8_t*)data, len, hash);
 }
-#if defined(ARDUINO) && ARDUINO >= 100
+#if USE_ARDUINO_STRING
 int rmd160(const String data, uint8_t hash[20]){
     RMD160 rmd;
     return hashString(&rmd, data, hash);
@@ -63,7 +63,7 @@ int sha256(const uint8_t * data, size_t len, uint8_t hash[32]){
 int sha256(const char * data, size_t len, uint8_t hash[32]){
     return sha256((uint8_t*)data, len, hash);
 }
-#if defined(ARDUINO) && ARDUINO >= 100
+#if USE_ARDUINO_STRING
 int sha256(const String data, uint8_t hash[32]){
     SHA256 sha;
     return hashString(&sha, data, hash);
@@ -109,7 +109,7 @@ int hash160(const uint8_t * data, size_t len, uint8_t hash[20]){
 int hash160(const char * data, size_t len, uint8_t hash[20]){
     return hash160((uint8_t*)data, len, hash);
 }
-#if defined(ARDUINO) && ARDUINO >= 100
+#if USE_ARDUINO_STRING
 int hash160(const String data, uint8_t hash[20]){
     Hash160 h160;
     return hashString(&h160, data, hash);
@@ -133,7 +133,7 @@ int doubleSha(const uint8_t * data, size_t len, uint8_t hash[32]){
 int doubleSha(const char * data, size_t len, uint8_t hash[32]){
     return doubleSha((uint8_t*)data, len, hash);
 }
-#if defined(ARDUINO) && ARDUINO >= 100
+#if USE_ARDUINO_STRING
 int doubleSha(const String data, uint8_t hash[32]){
     DoubleSha sha;
     return hashString(&sha, data, hash);
@@ -156,7 +156,7 @@ int sha512(const uint8_t * data, size_t len, uint8_t hash[64]){
 int sha512(const char * data, size_t len, uint8_t hash[64]){
     return sha512((uint8_t*)data, len, hash);
 }
-#if defined(ARDUINO) && ARDUINO >= 100
+#if USE_ARDUINO_STRING
 int sha512(const String data, uint8_t hash[64]){
     SHA512 sha;
     return hashString(&sha, data, hash);

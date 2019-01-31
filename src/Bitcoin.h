@@ -1,19 +1,24 @@
 #ifndef __BITCOIN_H__
 #define __BITCOIN_H__
 
-#if defined(ARDUINO) && ARDUINO >= 100
+#include "uBitcoin_conf.h"
+
+#if USE_ARDUINO_STRING
 #include "WString.h"
 #endif
-
-#ifndef ARDUINO
-#define MBED
-#include <mbed.h>
+#if USE_ARDUINO_STREAM
+#include "Stream.h"
+#include "Print.h"
 #endif
 
 #include "Conversion.h"
 #include <stdint.h>
 #include <string.h>
 
+#if USE_STD_STRING
+#include <string>
+// using std::string;
+#endif
 /*
     Constants.
 */
@@ -45,8 +50,13 @@
 #define SIGHASH_NONE           2
 #define SIGHASH_SINGLE         3
 
-
-class PublicKey; // forward definition
+/* forward definitions */
+class Signature;
+class PublicKey;
+class PrivateKey;
+class HDPublicKey;
+class HDPrivateKey;
+class Script;
 
 /*
     Signature class.
@@ -64,7 +74,7 @@ public:
     Signature(const uint8_t * der);                           // parses raw array
 
     Signature(ByteStream &s);                                     // parses raw array from Stream
-#ifdef ARDUINO
+#if USE_ARDUINO_STRING
     Signature(const String der);                              // parses String
 #endif
 
@@ -87,7 +97,7 @@ public:
 
     // parses der-encoded signature in hex format from char array, String or Stream
     size_t parseHex(const char * hex);                        // parses hex string
-#ifdef ARDUINO
+#if USE_ARDUINO_STRING
     size_t parseHex(const String hex);                        // parses String
 #endif
     // TODO: implement
@@ -104,7 +114,7 @@ public:
     // Operators overloading
 
     // String conversion
-#ifdef ARDUINO
+#if USE_ARDUINO_STRING
     operator String();
 #endif
 
@@ -131,7 +141,7 @@ public:
     Script();                                                 // empty constructor
     Script(const uint8_t * buffer, size_t len);               // creates script from byte array
     Script(const char * address);                             // creates script from address
-#ifdef ARDUINO
+#if USE_ARDUINO_STRING
     Script(const String address);                             // creates script from address
 #endif
     Script(const PublicKey pubkey, int type = P2PKH);         // creates one of standart scripts (P2PKH, P2WPKH)
@@ -151,7 +161,7 @@ public:
 
     int type() const;
     size_t address(char * buffer, size_t len, bool testnet = false) const;
-#ifdef ARDUINO
+#if USE_ARDUINO_STRING
     String address(bool testnet = false) const;
 #endif
 
@@ -173,12 +183,12 @@ public:
 
     // Prints hex encoded script to any stream / display / file
     // For example allows to do Serial.print(script)
-#ifdef ARDUINO
+#if USE_ARDUINO_STRING
     size_t printTo(Print& p) const;
 #endif
 
     Script &operator=(Script const &other);                   // assignment
-#ifdef ARDUINO
+#if USE_ARDUINO_STRING
     operator String();
 #endif
     // TODO: operator +, +=, etc
@@ -206,17 +216,22 @@ public:
     explicit PublicKey(const char * secHex); // parseHex method will be better
 
     size_t sec(uint8_t * sec, size_t len) const; // TODO: make serialize()
-#ifdef ARDUINO
+#if USE_ARDUINO_STRING
     String sec() const;
 #endif
     size_t fromSec(const uint8_t * secArr);
     int address(char * address, size_t len, bool testnet = false) const;
     int segwitAddress(char * address, size_t len, bool testnet = false) const;
     int nestedSegwitAddress(char * address, size_t len, bool testnet = false) const;
-#ifdef ARDUINO
+#if USE_ARDUINO_STRING
     String address(bool testnet = false) const;
     String segwitAddress(bool testnet = false) const;
     String nestedSegwitAddress(bool testnet = false) const;
+#endif
+#if USE_STD_STRING
+    std::string address(bool testnet = false) const;
+    std::string segwitAddress(bool testnet = false) const;
+    std::string nestedSegwitAddress(bool testnet = false) const;
 #endif
     bool verify(const Signature sig, const uint8_t hash[32]) const;
     bool isValid() const;
@@ -228,7 +243,7 @@ public:
 
     // Prints hex encoded public key in sec format to any stream / display / file
     // For example allows to do Serial.print(publicKey)
-#ifdef ARDUINO
+#if USE_ARDUINO_STRING
     size_t printTo(Print& p) const;
     operator String();
 #endif
@@ -253,7 +268,7 @@ public:
     PrivateKey();
     PrivateKey(const uint8_t secret_arr[32], bool use_compressed = true, bool use_testnet = false);
     PrivateKey(const char * wifArr);
-#ifdef ARDUINO
+#if USE_ARDUINO_STRING
     PrivateKey(const String wifString);
 #endif
     ~PrivateKey();
@@ -268,7 +283,7 @@ public:
     bool testnet;       // set to true for testnet
 
     int wif(char * wifArr, size_t len) const; // writes wallet import format string to wif array. 51 or 52 characters are required.
-#ifdef ARDUINO
+#if USE_ARDUINO_STRING
     String wif() const;
 #endif
     int fromWIF(const char * wifArr, size_t wifSize);
@@ -281,15 +296,20 @@ public:
     int address(char * address, size_t len) const;
     int segwitAddress(char * address, size_t len) const;
     int nestedSegwitAddress(char * address, size_t len) const;
-#ifdef ARDUINO
+#if USE_ARDUINO_STRING
     String address() const;
     String segwitAddress() const;
     String nestedSegwitAddress() const;
 #endif
+#if USE_STD_STRING
+    std::string address() const;
+    std::string segwitAddress() const;
+    std::string nestedSegwitAddress() const;
+#endif
 
     // Prints private key in WIF format to any stream / display / file
     // For example allows to do Serial.print(privateKey)
-#ifdef ARDUINO
+#if USE_ARDUINO_STRING
     size_t printTo(Print& p) const;
     operator String(){ return wif(); };
 #endif
@@ -317,6 +337,13 @@ public:
                  bool use_testnet = false,
                  uint8_t key_type = UNKNOWN_HD_TYPE);
     HDPrivateKey(const char xprvArr[]);
+    HDPrivateKey(const char * mnemonic, size_t mnemonicSize, const char * password, size_t passwordSize, bool use_testnet = false);
+#if USE_STD_STRING
+    HDPrivateKey(std::string mnemonic, std::string password, bool use_testnet = false);
+#endif
+#if USE_ARDUINO_STRING
+    HDPrivateKey(String mnemonic, String password, bool use_testnet = false);
+#endif
     ~HDPrivateKey();
 
     PrivateKey privateKey;
@@ -329,18 +356,29 @@ public:
     int fromSeed(const uint8_t * seed, size_t seedSize, bool use_testnet);
     // int fromSeed(const uint8_t seed[64], bool use_testnet = false);
     int fromMnemonic(const char * mnemonic, size_t mnemonicSize, const char * password, size_t passwordSize, bool use_testnet = false);
+#if USE_STD_STRING
+    int fromMnemonic(std::string mnemonic, std::string password, bool use_testnet = false);
+#endif
+#if USE_ARDUINO_STRING
+    int fromMnemonic(String mnemonic, String password, bool use_testnet = false);
+#endif
     int xprv(char * arr, size_t len) const;
     int xpub(char * arr, size_t len) const;
+    HDPublicKey xpub() const;
     int address(char * arr, size_t len) const;
-#ifdef ARDUINO
+#if USE_ARDUINO_STRING
     String xprv() const;
-    String xpub() const;
     String address() const;
 
     // Prints HD private key in base58 encoding (as xprv...) to any stream / display / file
     // For example allows to do Serial.print(privateKey)
     size_t printTo(Print& p) const;
     operator String(){ return xprv(); };
+#endif
+#if USE_STD_STRING
+    std::string xprv() const;
+    std::string address() const;
+    operator std::string(){ return xprv(); };
 #endif
 
     HDPrivateKey child(uint32_t index) const;
@@ -371,7 +409,7 @@ public:
 
     int xpub(char * arr, size_t len) const;
     int address(char * arr, size_t len) const;
-#ifdef ARDUINO
+#if USE_ARDUINO_STRING
     String xpub() const;
     String address() const;
 
@@ -379,6 +417,11 @@ public:
     // For example allows to do Serial.print(privateKey)
     size_t printTo(Print& p) const;
     operator String(){ return xpub(); };
+#endif
+#if USE_STD_STRING
+    std::string xpub() const;
+    std::string address() const;
+    operator std::string(){ return xpub(); };
 #endif
 
     HDPublicKey child(uint32_t index) const;
@@ -430,8 +473,8 @@ public:
     size_t parse(ByteStream &s);
     size_t serialize(ByteStream &s); // serialize to Stream
     size_t serialize(ByteStream &s, Script script_pubkey); // serialize to stream with custom script
-#ifdef ARDUINO
-    operator String();
+#if USE_ARDUINO_STRING
+    // operator String();
 #endif
 };
 
@@ -444,7 +487,7 @@ public:
     TransactionOutput(char address[], uint64_t send_amount);
     TransactionOutput(TransactionOutput const &other);
     TransactionOutput &operator=(TransactionOutput const &other);
-#ifdef ARDUINO
+#if USE_ARDUINO_STRING
     TransactionOutput(uint64_t send_amount, String address);
     TransactionOutput(String address, uint64_t send_amount);
     // TransactionOutput(Stream & s){ parse(s); };
@@ -462,9 +505,9 @@ public:
     size_t parse(ByteStream &s);
     size_t serialize(ByteStream &s); // serialize to Stream
     size_t address(char * buf, size_t len, bool testnet=false);
-#ifdef ARDUINO
+#if USE_ARDUINO_STRING
     String address(bool testnet=false);
-    operator String();
+    // operator String();
 #endif
 };
 
@@ -478,15 +521,15 @@ public:
     Tx(Tx const &other);
     Tx &operator=(Tx const &other);
 
-    uint32_t version = 1;
-    TransactionInput * txIns = NULL;
-    TransactionOutput * txOuts = NULL;
-    uint32_t locktime = 0;
-    bool is_electrum = false;
+    uint32_t version;
+    TransactionInput * txIns;
+    TransactionOutput * txOuts;
+    uint32_t locktime;
+    bool is_electrum;
 
     size_t parse(const uint8_t * raw, size_t len);
-    size_t inputsNumber = 0;
-    size_t outputsNumber = 0;
+    size_t inputsNumber;
+    size_t outputsNumber;
     uint8_t addInput(TransactionInput txIn);
     uint8_t addOutput(TransactionOutput txOut);
 
@@ -499,7 +542,7 @@ public:
     // populates hash with transaction hash
     int hash(uint8_t hash[32]);
     int id(uint8_t id_arr[32]); // populates array with id of the transaction (reverse of hash)
-#ifdef ARDUINO
+#if USE_ARDUINO_STRING
     String id(); // returns hex string with id of the transaction
 #endif
     bool isSegwit();
@@ -517,8 +560,8 @@ public:
     Signature signInput(uint8_t inputIndex, PrivateKey pk, Script redeemScript);
 
     // TODO: sort() - bip69, Lexicographical Indexing of Transaction Inputs and Outputs
-#ifdef ARDUINO
-    operator String();
+#if USE_ARDUINO_STRING
+    // operator String();
 #endif
 };
 

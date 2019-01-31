@@ -454,7 +454,7 @@ public:
     uint32_t sequence;
 
     // for electrum tx, only 2 for now
-    uint16_t derivation[2] = {0, 0};
+    uint16_t derivation[2];
 
     // For segwit:
     Script witnessProgram;

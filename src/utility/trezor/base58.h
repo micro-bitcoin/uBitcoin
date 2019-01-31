@@ -1,7 +1,6 @@
 /**
  * Copyright (c) 2013-2014 Tomas Dzetkulic
  * Copyright (c) 2013-2014 Pavol Rusnak
- * Copyright (c) 2015-2017 Jochen Hoenicke
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the "Software"),
@@ -22,28 +21,29 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef __RFC6979_H__
-#define __RFC6979_H__
+#ifndef __BASE58_H__
+#define __BASE58_H__
 
 #include <stdint.h>
-#include "bignum.h"
+#include <stdbool.h>
+#include "hasher.h"
+#include "options.h"
 
-// rfc6979 pseudo random number generator state
-typedef struct {
-	uint8_t v[32], k[32];
-} rfc6979_state;
+extern const char b58digits_ordered[];
+extern const int8_t b58digits_map[];
 
-#ifdef __cplusplus
-extern "C"
-{
-#endif
+int base58_encode_check(const uint8_t *data, int len, HasherType hasher_type, char *str, int strsize);
+int base58_decode_check(const char *str, HasherType hasher_type, uint8_t *data, int datalen);
 
-void init_rfc6979(const uint8_t *priv_key, const uint8_t *hash, rfc6979_state *rng);
-void generate_rfc6979(uint8_t rnd[32], rfc6979_state *rng);
-void generate_k_rfc6979(bignum256 *k, rfc6979_state *rng);
+// Private
+bool b58tobin(void *bin, size_t *binszp, const char *b58);
+int b58check(const void *bin, size_t binsz, HasherType hasher_type, const char *base58str);
+bool b58enc(char *b58, size_t *b58sz, const void *data, size_t binsz);
 
-#ifdef __cplusplus
-} /* end of extern "C" */
+#if USE_GRAPHENE
+int base58gph_encode_check(const uint8_t *data, int datalen, char *str, int strsize);
+int base58gph_decode_check(const char *str, uint8_t *data, int datalen);
+int b58gphcheck(const void *bin, size_t binsz, const char *base58str);
 #endif
 
 #endif

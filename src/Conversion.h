@@ -65,8 +65,8 @@ size_t toBase43(const uint8_t * array, size_t arraySize, char * output, size_t o
 size_t fromBase43Length(const char * array, size_t arraySize);
 size_t fromBase43(const char * encoded, size_t encodedSize, uint8_t * output, size_t outputSize);
 
-size_t toHex(const void * array, size_t arraySize, char * output, size_t outputSize);
-size_t toHex(const void * array, size_t arraySize, ByteStream * s); // printing hex array to stream
+size_t toHex(const uint8_t * array, size_t arraySize, char * output, size_t outputSize);
+size_t toHex(const uint8_t * array, size_t arraySize, ByteStream * s); // printing hex array to stream
 #if USE_ARDUINO_STRING
 String toHex(const uint8_t * array, size_t arraySize);
 size_t toHex(uint8_t v, Print &s); // printing single hex value to Print

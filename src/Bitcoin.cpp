@@ -4,9 +4,10 @@
 
 #include <stdint.h>
 #include <string.h>
-#include "utility/micro-ecc/uECC.h"
 #include "utility/trezor/sha2.h"
 #include "utility/trezor/rfc6979.h"
+#include "utility/trezor/ecdsa.h"
+#include "utility/trezor/secp256k1.h"
 #include "utility/segwit_addr.h"
 
 #if USE_STD_STRING
@@ -272,8 +273,9 @@ PublicKey::PublicKey(const uint8_t * secArr){
         memcpy(point, secArr+1, 64);
     }else{
         compressed = true;
-        const struct uECC_Curve_t * curve = uECC_secp256k1();
-        uECC_decompress(secArr, point, curve);
+        uint8_t arr[65];
+        ecdsa_uncompress_pubkey(&secp256k1, secArr, arr);
+        memcpy(point, arr+1, 64);
     }
 }
 PublicKey::PublicKey(const char * secHex){
@@ -285,8 +287,9 @@ PublicKey::PublicKey(const char * secHex){
         compressed = true;
         uint8_t secArr[33];
         fromHex(secHex, 2*33, secArr, 33);
-        const struct uECC_Curve_t * curve = uECC_secp256k1();
-        uECC_decompress(secArr, point, curve);
+        uint8_t arr[65];
+        ecdsa_uncompress_pubkey(&secp256k1, secArr, arr);
+        memcpy(point, arr+1, 64);
     }
 }
 size_t PublicKey::sec(uint8_t * sec, size_t len) const{
@@ -317,8 +320,9 @@ size_t PublicKey::fromSec(const uint8_t * secArr){
         return 65;
     }else{
         compressed = true;
-        const struct uECC_Curve_t * curve = uECC_secp256k1();
-        uECC_decompress(secArr, point, curve);
+        uint8_t arr[65];
+        ecdsa_uncompress_pubkey(&secp256k1, secArr, arr);
+        memcpy(point, arr+1, 64);
         return 33;
     }
 }
@@ -423,8 +427,9 @@ Script PublicKey::script(int type) const{
 bool PublicKey::verify(const Signature sig, const uint8_t hash[32]) const{
     uint8_t signature[64] = {0};
     sig.bin(signature);
-    const struct uECC_Curve_t * curve = uECC_secp256k1();
-    return uECC_verify(point, hash, 32, signature, curve);
+    uint8_t pub[65];
+    sec(pub, 65);
+    return (ecdsa_verify_digest(&secp256k1, pub, signature, hash)==0);
 }
 #if USE_ARDUINO_STRING
 PublicKey::operator String(){
@@ -434,8 +439,10 @@ PublicKey::operator String(){
 };
 #endif
 bool PublicKey::isValid() const{
-    const struct uECC_Curve_t * curve = uECC_secp256k1();
-    return uECC_valid_public_key(point, curve);
+    curve_point pub;
+    uint8_t secArr[65];
+    sec(secArr, 65);
+    return ecdsa_read_pubkey(&secp256k1, secArr, &pub);
 }
 #if USE_ARDUINO_STRING
 size_t PublicKey::printTo(Print& p) const{
@@ -455,10 +462,13 @@ PrivateKey::PrivateKey(const uint8_t * secret_arr, bool use_compressed, bool use
     compressed = use_compressed;
     testnet = use_testnet;
 
-    const struct uECC_Curve_t * curve = uECC_secp256k1();
-    uint8_t p[64] = {0};
-    uECC_compute_public_key(secret, p, curve);
-    pubKey = PublicKey(p, use_compressed);
+    uint8_t p[65] = {0};
+    if(compressed){
+      ecdsa_get_public_key33(&secp256k1, secret, p);
+    }else{
+      ecdsa_get_public_key65(&secp256k1, secret, p);
+    }
+    pubKey = PublicKey(p);
 }
 PrivateKey::~PrivateKey(void) {
     // erase secret key from memory
@@ -515,11 +525,13 @@ int PrivateKey::fromWIF(const char * wifArr, size_t wifSize){
     memset(arr, 0, 40); // clear memory
 
     // TODO: incapsulate
-    const struct uECC_Curve_t * curve = uECC_secp256k1();
-    uint8_t p[64] = {0};
-    uECC_compute_public_key(secret, p, curve);
-    pubKey = PublicKey(p, compressed);
-
+    uint8_t p[65] = {0};
+    if(compressed){
+      ecdsa_get_public_key33(&secp256k1, secret, p);
+    }else{
+      ecdsa_get_public_key65(&secp256k1, secret, p);
+    }
+    pubKey = PublicKey(p);
     return 0;
 }
 int PrivateKey::fromWIF(const char * wifArr){
@@ -581,35 +593,33 @@ string PrivateKey::nestedSegwitAddress() const{
 }
 #endif
 
+static int is_canonical(uint8_t by, uint8_t sig[64]){
+  return 1;
+}
+
 Signature PrivateKey::sign(const uint8_t hash[32]) const{
-    // uint8_t tmp[32 + 32 + 64] = {0};
-    uint8_t signature[64] = {0};
-    const struct uECC_Curve_t * curve = uECC_secp256k1();
-
-    rfc6979_state rng;
-    uint8_t rnd[32];
-    init_rfc6979(secret, hash, &rng);
-    generate_rfc6979(rnd, &rng);
-
+    uint8_t signature[65] = {0};
     uint8_t i = 0;
-    uECC_sign_with_k(secret, hash, 32, rnd, signature, &i, curve);
+    ecdsa_sign_digest(&secp256k1, secret, hash, signature, &i, &is_canonical);
     Signature sig(signature, signature+32);
     sig.index = i;
     return sig;
 }
 int PrivateKey::sign_bin(const uint8_t * hash, size_t hashSize, uint8_t * sig, size_t sigSize) const{
-    // uint8_t tmp[32 + 32 + 64] = {0};
-    const struct uECC_Curve_t * curve = uECC_secp256k1();
-
-    rfc6979_state rng;
-    uint8_t rnd[32];
-    init_rfc6979(secret, hash, &rng);
-    generate_rfc6979(rnd, &rng);
-
+    uint8_t signature[65] = {0};
     uint8_t i = 0;
-    uECC_sign(secret, hash, hashSize, sig, &i, curve);
-    sig[64] = i;
-    return 65;
+    ecdsa_sign_digest(&secp256k1, secret, hash, signature, &i, &is_canonical);
+    if(sigSize < sizeof(signature)){
+      memcpy(sig, signature, sigSize);
+      return sigSize;
+    }else{
+      memcpy(sig, signature, sizeof(signature));
+    }
+    if(sigSize > 64){
+      sig[64] = i;
+      return sizeof(signature)+1;
+    }
+    return sizeof(signature);
 }
 
 bool PrivateKey::operator==(const PrivateKey& other) const{

@@ -9,7 +9,6 @@
 
 #include <stdint.h>
 #include <string.h>
-#include "utility/micro-ecc/uECC.h"
 #include "utility/trezor/sha2.h"
 #include "utility/trezor/ripemd160.h"
 #include "utility/trezor/hmac.h"

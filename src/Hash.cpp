@@ -1,5 +1,5 @@
 #include "Hash.h"
-#include "utility/trezor/sha2.h"
+#include "utility/trezor/hmac.h"
 #include "utility/trezor/ripemd160.h"
 
 // generic funtcions for single line hash

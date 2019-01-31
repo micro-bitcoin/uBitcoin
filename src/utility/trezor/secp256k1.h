@@ -1,7 +1,6 @@
 /**
  * Copyright (c) 2013-2014 Tomas Dzetkulic
  * Copyright (c) 2013-2014 Pavol Rusnak
- * Copyright (c) 2015-2017 Jochen Hoenicke
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the "Software"),
@@ -22,28 +21,18 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef __RFC6979_H__
-#define __RFC6979_H__
+#ifndef __SECP256K1_H__
+#define __SECP256K1_H__
 
 #include <stdint.h>
-#include "bignum.h"
 
-// rfc6979 pseudo random number generator state
-typedef struct {
-	uint8_t v[32], k[32];
-} rfc6979_state;
+#include "ecdsa.h"
+#include "bip32.h"
 
-#ifdef __cplusplus
-extern "C"
-{
-#endif
-
-void init_rfc6979(const uint8_t *priv_key, const uint8_t *hash, rfc6979_state *rng);
-void generate_rfc6979(uint8_t rnd[32], rfc6979_state *rng);
-void generate_k_rfc6979(bignum256 *k, rfc6979_state *rng);
-
-#ifdef __cplusplus
-} /* end of extern "C" */
-#endif
+extern const ecdsa_curve secp256k1;
+extern const curve_info secp256k1_info;
+// extern const curve_info secp256k1_decred_info;
+// extern const curve_info secp256k1_groestl_info;
+// extern const curve_info secp256k1_smart_info;
 
 #endif

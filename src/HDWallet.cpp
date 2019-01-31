@@ -4,9 +4,11 @@
 #include "Bitcoin.h"
 #include "Hash.h"
 #include "Conversion.h"
-#include "utility/micro-ecc/uECC.h"
 #include "utility/trezor/sha2.h"
 #include "utility/segwit_addr.h"
+#include "utility/trezor/bignum.h"
+#include "utility/trezor/ecdsa.h"
+#include "utility/trezor/secp256k1.h"
 
 #if USE_STD_STRING
 using std::string;
@@ -339,7 +341,6 @@ HDPrivateKey HDPrivateKey::child(uint32_t index) const{
     uint16_t carry = 0;
     uint8_t res[32] = { 0 };
     // TODO: test it!!!
-    // refactor with uECC_vli.h
     for(int i=31; i>=0; i--){
         carry += raw[i];
         carry += privateKey.secret[i];
@@ -430,7 +431,6 @@ HDPrivateKey HDPrivateKey::hardenedChild(uint32_t index) const{
     uint16_t carry = 0;
     uint8_t res[32] = { 0 };
     // TODO: test it!!!
-    // refactor with uECC_vli.h
     for(int i=31; i>=0; i--){
         carry += raw[i];
         carry += privateKey.secret[i];
@@ -665,14 +665,19 @@ HDPublicKey HDPublicKey::child(uint32_t index) const{
 
     uint8_t secret[32];
     memcpy(secret, raw, 32);
-    const struct uECC_Curve_t * curve = uECC_secp256k1();
-    uint8_t p[64] = {0};
-    uECC_compute_public_key(secret, p, curve);
+    uint8_t p1[65] = {0};
+    ecdsa_get_public_key65(&secp256k1, secret, p1);
+    uint8_t p2[65] = { 0x04};
+    memcpy(p2+1, publicKey.point, 64);
+    curve_point pub1;
+    curve_point pub2;
+    ecdsa_read_pubkey(&secp256k1, p1, &pub1);
+    ecdsa_read_pubkey(&secp256k1, p2, &pub2);
+    point_add(&secp256k1, &pub1, &pub2);
+    bn_write_be(&pub2.x, p2 + 1);
+    bn_write_be(&pub2.y, p2 + 33);
 
-    uint8_t point[64] = { 0 };
-    uECC_add_points(p, publicKey.point, point, curve);
-
-    child.publicKey = PublicKey(point, true);
+    child.publicKey = PublicKey(p2+1, true);
     child.testnet = testnet;
     return child;
 }

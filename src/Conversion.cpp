@@ -8,8 +8,8 @@
 char BASE58_CHARS[] = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
 char BASE43_CHARS[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ$*+-./:";
 
-size_t toHex(const void * arr, size_t arraySize, char * output, size_t outputSize){
-    uint8_t * array = (uint8_t *) arr;
+size_t toHex(const uint8_t * array, size_t arraySize, char * output, size_t outputSize){
+    // uint8_t * array = (uint8_t *) arr;
     if(outputSize < 2*arraySize){
         return 0;
     }
@@ -28,8 +28,8 @@ size_t toHex(const void * arr, size_t arraySize, char * output, size_t outputSiz
     }
     return 2*arraySize;
 }
-size_t toHex(const void * arr, size_t arraySize, ByteStream * s){
-    uint8_t * array = (uint8_t *) arr;
+size_t toHex(const uint8_t * array, size_t arraySize, ByteStream * s){
+    // uint8_t * array = (uint8_t *) arr;
     char b[3] = "";
     for(size_t i=0; i < arraySize; i++){
         uint8_t v = array[i];

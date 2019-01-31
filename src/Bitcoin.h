@@ -458,7 +458,7 @@ public:
 
     // For segwit:
     Script witnessProgram;
-    uint64_t amount = 0; // required for signing, also used for fee calculation
+    uint64_t amount; // required for signing, also used for fee calculation
 
     // following information is optional,
     // can be obtained from spending output

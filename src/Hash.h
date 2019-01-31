@@ -23,9 +23,9 @@ protected:
 public:
 	void begin(){};
     // void beginHMAC(const uint8_t * key, size_t keySize);
-    virtual size_t write(const uint8_t * data, size_t len);
-    virtual size_t write(uint8_t b);
-    virtual size_t end(uint8_t * hash);
+    virtual size_t write(const uint8_t * data, size_t len){ return 0; };
+    virtual size_t write(uint8_t b){ return 0; };
+    virtual size_t end(uint8_t * hash){ return 0; };
     // size_t endHMAC(uint8_t * hash);
 };
 

@@ -23,11 +23,14 @@
 
 #include <string.h>
 #include <stdbool.h>
-#include <sys/types.h>
+//#include <sys/types.h>
+#include <stdint.h>
 #include "base58.h"
 #include "sha2.h"
 #include "ripemd160.h"
 #include "memzero.h"
+
+#define ssize_t int32_t
 
 const char b58digits_ordered[] = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
 const int8_t b58digits_map[] = {

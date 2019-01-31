@@ -24,7 +24,7 @@
 class ByteStream{
     size_t len;
     size_t cursor;
-    uint8_t * buf = NULL;
+    uint8_t * buf;
 public:
     ByteStream();
     ByteStream(const uint8_t * buffer, size_t length);

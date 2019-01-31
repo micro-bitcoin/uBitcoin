@@ -36,6 +36,11 @@ typedef struct {
 	uint32_t val[9];
 } bignum256;
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 // read 4 big endian bytes into uint32
 uint32_t read_be(const uint8_t *data);
 
@@ -162,6 +167,10 @@ static inline size_t bn_format_uint64(uint64_t amount, const char *prefix, const
 #if USE_BN_PRINT
 void bn_print(const bignum256 *a);
 void bn_print_raw(const bignum256 *a);
+#endif
+
+#ifdef __cplusplus
+} // extern "C"
 #endif
 
 #endif

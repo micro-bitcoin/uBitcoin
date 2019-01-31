@@ -494,7 +494,7 @@ public:
 #endif
     // TransactionOutput(byte raw[], size_t len){ parse(raw, len); };
 
-    uint64_t amount = 0;
+    uint64_t amount;
     Script scriptPubKey;
 
     size_t parse(const uint8_t * raw, size_t l);

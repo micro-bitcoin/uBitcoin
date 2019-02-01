@@ -330,9 +330,6 @@ size_t Tx::parse(ByteStream &s){
 
     // check if I can get inputs len (not with available() because of timeout)
     l = s.peek(); // do I need all this stuff?
-    if(l < 0){
-        return 0;
-    }
     if(l == 0x00){ // segwit marker
         uint8_t marker = s.read();
         uint8_t flag = s.read();
@@ -356,10 +353,6 @@ size_t Tx::parse(ByteStream &s){
         }
     }
 
-    l = s.peek();
-    if(l < 0){
-        return 0;
-    }
     outputsNumber = readVarInt(s);
     len += lenVarInt(outputsNumber);
     txOuts = ( TransactionOutput * )calloc( outputsNumber, sizeof(TransactionOutput) );

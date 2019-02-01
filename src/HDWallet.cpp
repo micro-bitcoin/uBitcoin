@@ -49,12 +49,16 @@ uint8_t VPUB_PREFIX[4] = { 0x04, 0x5f, 0x1c, 0xf6 };
 uint8_t VPRV_PREFIX[4] = { 0x04, 0x5f, 0x18, 0xbc };
 
 // TODO: make friends with PrivateKey to get secret or inherit from it
-HDPrivateKey::HDPrivateKey(void){
+void HDPrivateKey::init(){
     privateKey.compressed = true;
     memset(chainCode, 0, 32);
     depth = 0;
     memset(fingerprint, 0, 4);
     childNumber = 0;
+    type = UNKNOWN_HD_TYPE;
+}
+HDPrivateKey::HDPrivateKey(void){
+    init();
 }
 HDPrivateKey::HDPrivateKey(const uint8_t secret[32],
                            const uint8_t chain_code[32],
@@ -63,7 +67,7 @@ HDPrivateKey::HDPrivateKey(const uint8_t secret[32],
                            uint32_t child_number,
                            bool use_testnet,
                            uint8_t key_type){
-
+    init();
     type = key_type;
     privateKey = PrivateKey(secret, true, use_testnet);
     memcpy(chainCode, chain_code, 32);
@@ -76,6 +80,7 @@ HDPrivateKey::HDPrivateKey(const uint8_t secret[32],
     }
 }
 HDPrivateKey::HDPrivateKey(const char * xprvArr){
+    init();
     size_t xprvLen = strlen(xprvArr);
     uint8_t arr[85] = { 0 };
     size_t l = fromBase58Check(xprvArr, xprvLen, arr, sizeof(arr));
@@ -134,6 +139,7 @@ HDPrivateKey::~HDPrivateKey(void) {
     // privateKey will clean everything up by itself
 }
 int HDPrivateKey::fromSeed(const uint8_t * seed, size_t seedSize, bool use_testnet){
+    init();
     uint8_t raw[64] = { 0 };
     SHA512 sha;
     char key[] = "Bitcoin seed";
@@ -149,6 +155,7 @@ int HDPrivateKey::fromSeed(const uint8_t * seed, size_t seedSize, bool use_testn
 //     fromSeed(seed, 64);
 // }
 int HDPrivateKey::fromMnemonic(const char * mnemonic, size_t mnemonicSize, const char * password, size_t passwordSize, bool use_testnet){
+    init();
     uint8_t seed[64] = { 0 };
     uint8_t ind[4] = { 0, 0, 0, 1 };
     char salt[] = "mnemonic";

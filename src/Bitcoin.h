@@ -328,6 +328,8 @@ public:
     Classes are defined in HDWallet.cpp
 */
 class HDPrivateKey{
+private:
+    void init();
 public:
     HDPrivateKey();
     HDPrivateKey(const uint8_t secret[32], const uint8_t chain_code[32],

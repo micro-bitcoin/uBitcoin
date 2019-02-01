@@ -25,7 +25,7 @@
 
 #ifndef RAND_PLATFORM_INDEPENDENT
 
-#pragma message("NOT SUITABLE FOR PRODUCTION USE! Replace random32() function with your own secure code.")
+// #pragma message("NOT SUITABLE FOR PRODUCTION USE! Replace random32() function with your own secure code.")
 
 // The following code is not supposed to be used in a production environment.
 // It's included only to make the library testable.

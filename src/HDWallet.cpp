@@ -418,6 +418,10 @@ HDPrivateKey HDPrivateKey::hardenedChild(uint32_t index) const{
                 break;
         }
     }
+    bool testnet = privateKey.testnet;
+    if(depth == 1 && type != UNKNOWN_HD_TYPE){
+        testnet = index;
+    }
     index += (1<<31);
     child.childNumber = index;
 
@@ -478,7 +482,7 @@ HDPrivateKey HDPrivateKey::hardenedChild(uint32_t index) const{
             carry >>= 8;
         }
     }
-    child.privateKey = PrivateKey(res, true, privateKey.testnet);
+    child.privateKey = PrivateKey(res, true, testnet);
     memset(res, 0, 32);
     return child;
 }

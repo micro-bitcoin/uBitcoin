@@ -571,8 +571,8 @@ public:
     // signes input and returns scriptSig with signature and public key
     Signature signInput(uint8_t inputIndex, PrivateKey pk);
     Signature signInput(uint8_t inputIndex, PrivateKey pk, Script redeemScript);
-    // TODO: signInput(inputIndex, HDPrivateKey);
-    // TODO: sign(HDPrivateKey);
+    Signature signInput(uint8_t inputIndex, HDPrivateKey account);
+    void sign(HDPrivateKey account);
     // TODO: sort() - bip69, Lexicographical Indexing of Transaction Inputs and Outputs
 #if USE_ARDUINO_STRING
     // operator String();

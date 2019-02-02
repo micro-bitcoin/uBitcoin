@@ -877,6 +877,23 @@ Signature Tx::signInput(uint8_t inputIndex, PrivateKey pk){
     PublicKey pubkey = pk.publicKey();
     return signInput(inputIndex, pk, pubkey.script());
 }
+
+Signature Tx::signInput(uint8_t inputIndex, HDPrivateKey account){
+    PrivateKey pk = account.child(txIns[inputIndex].derivation[0]).child(txIns[inputIndex].derivation[1]).privateKey;
+    if(account.type == P2SH_P2WPKH){
+        Script redeemScript(pk.publicKey(), P2WPKH);
+        return signInput(inputIndex, pk, redeemScript);
+    }else{
+        return signInput(inputIndex, pk);
+    }
+}
+
+void Tx::sign(HDPrivateKey account){
+    for(unsigned int i=0; i<inputsNumber; i++){
+        signInput(i, account);
+    }
+}
+
 #if USE_ARDUINO_STRING
 // Tx::operator String(){
 //     size_t len = length();

@@ -612,6 +612,7 @@ size_t writeVarInt(uint64_t num, ByteStream &s){
 ByteStream::ByteStream(){
     len = 0;
     cursor = 0;
+    buf = NULL;
 }
 ByteStream::ByteStream(const uint8_t * buffer, size_t length){
     len = length;

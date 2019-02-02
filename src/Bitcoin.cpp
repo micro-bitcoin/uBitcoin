@@ -261,7 +261,10 @@ void Signature::bin(uint8_t arr[64]) const{
 
 // ---------------------------------------------------------------- PublicKey class
 
-PublicKey::PublicKey(){}
+PublicKey::PublicKey(){
+    memset(point, 0, 64);
+    compressed = true;
+}
 PublicKey::PublicKey(const uint8_t * pubkeyArr, bool use_compressed){
     memcpy(point, pubkeyArr, 64);
     compressed = use_compressed;

@@ -8,6 +8,11 @@
 TxIn::TxIn(void){
     Script empty;
     scriptSig = empty;
+    outputIndex = 0;
+    sequence = 0;
+    amount=0;
+    memset(derivation, 0, 2);
+    memset(hash, 0, 32);
 }
 // TODO: don't repeat yourself
 TxIn::TxIn(uint8_t prev_id[32], uint32_t prev_index, Script script, uint32_t sequence_number){
@@ -277,6 +282,11 @@ TxOut &TxOut::operator=(TxOut const &other){
 Tx::Tx(void){
     inputsNumber = 0;
     outputsNumber = 0;
+    txIns = NULL;
+    txOuts = NULL;
+    version = 1;
+    locktime = 0;
+    is_electrum = false;
 }
 Tx::~Tx(void){
     if(inputsNumber > 0){

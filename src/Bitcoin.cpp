@@ -458,7 +458,9 @@ size_t PublicKey::printTo(Print& p) const{
 // ---------------------------------------------------------------- PrivateKey class
 
 PrivateKey::PrivateKey(void){
-    memset(secret, 0xFF, 32); // empty key
+    memset(secret, 0, 32); // empty key
+    compressed = true;
+    testnet = false;
 }
 PrivateKey::PrivateKey(const uint8_t * secret_arr, bool use_compressed, bool use_testnet){
     memcpy(secret, secret_arr, 32);

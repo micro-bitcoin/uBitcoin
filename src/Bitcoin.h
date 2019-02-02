@@ -65,8 +65,8 @@ class Script;
 class Signature{// : public Printable{
 private:
 public:
-    uint8_t r[32] = {0};
-    uint8_t s[32] = {0};
+    uint8_t r[32];
+    uint8_t s[32];
 
     Signature(); // empty constructor
     Signature(const uint8_t r_arr[32], const uint8_t s_arr[32]); // constructor using r and s values
@@ -135,8 +135,8 @@ public:
 class Script{
 private:
     void clear();                                             // clears memory
-    uint8_t * scriptArray = NULL;                             // stores actual script data
-    size_t scriptLen = 0;                                     // script length
+    uint8_t * scriptArray;                             // stores actual script data
+    size_t scriptLen;                                     // script length
 public:
     Script();                                                 // empty constructor
     Script(const uint8_t * buffer, size_t len);               // creates script from byte array
@@ -210,8 +210,8 @@ public:
  */
 class PublicKey{
 public:
-    uint8_t point[64] = { 0 };  // point on curve (x,y)
-    bool compressed = true;
+    uint8_t point[64];  // point on curve (x,y)
+    bool compressed;
 
     PublicKey();
     PublicKey(const uint8_t pubkeyArr[64], bool use_compressed);
@@ -266,7 +266,7 @@ public:
 class PrivateKey{
     PublicKey pubKey;  // corresponding point on curve ( secret * G )
 public:
-    uint8_t secret[32] = { 0 }; // 32-byte secret
+    uint8_t secret[32]; // 32-byte secret
 
     PrivateKey();
     PrivateKey(const uint8_t secret_arr[32], bool use_compressed = true, bool use_testnet = false);
@@ -282,8 +282,8 @@ public:
     void getSecret(uint8_t buffer[32]) const{ memcpy(buffer, secret, 32); };
 
     // TODO: remove `compressed` from here. PublicKey already has it.
-    bool compressed = true;    // set to true if you want to use compressed public key format
-    bool testnet = false;       // set to true for testnet
+    bool compressed;    // set to true if you want to use compressed public key format
+    bool testnet;       // set to true for testnet
 
     int wif(char * wifArr, size_t len) const; // writes wallet import format string to wif array. 51 or 52 characters are required.
 #if USE_ARDUINO_STRING
@@ -352,11 +352,11 @@ public:
     ~HDPrivateKey();
 
     PrivateKey privateKey;
-    uint8_t chainCode[32] = { 0 };
-    uint8_t depth = 0;
-    uint8_t fingerprint[4] = { 0 };
-    uint32_t childNumber = 0;
-    uint8_t type = UNKNOWN_HD_TYPE;
+    uint8_t chainCode[32];
+    uint8_t depth;
+    uint8_t fingerprint[4];
+    uint32_t childNumber;
+    uint8_t type;
 
     int fromSeed(const uint8_t * seed, size_t seedSize, bool use_testnet);
     // int fromSeed(const uint8_t seed[64], bool use_testnet = false);
@@ -405,12 +405,12 @@ public:
     ~HDPublicKey();
 
     PublicKey publicKey;
-    uint8_t chainCode[32] = { 0 };
-    uint8_t depth = 0;
-    uint8_t fingerprint[4] = { 0 };
-    uint32_t childNumber = 0;
-    uint8_t type = UNKNOWN_HD_TYPE;
-    bool testnet = false;
+    uint8_t chainCode[32];
+    uint8_t depth;
+    uint8_t fingerprint[4];
+    uint32_t childNumber;
+    uint8_t type;
+    bool testnet;
 
     int xpub(char * arr, size_t len) const;
     int address(char * arr, size_t len) const;
@@ -453,17 +453,17 @@ public:
     // TxIn(Stream & s){ parse(s); };
     // TxIn(byte raw[], size_t len){ parse(raw, len); };
 
-    uint8_t hash[32] = { 0 };
-    uint32_t outputIndex = 0;
+    uint8_t hash[32];
+    uint32_t outputIndex;
     Script scriptSig;
-    uint32_t sequence = 0;
+    uint32_t sequence;
 
     // for electrum tx, only 2 for now
-    uint16_t derivation[2] = {0,0};
+    uint16_t derivation[2];
 
     // For segwit:
     Script witnessProgram;
-    uint64_t amount = 0; // required for signing, also used for fee calculation
+    uint64_t amount; // required for signing, also used for fee calculation
 
     // following information is optional,
     // can be obtained from spending output
@@ -499,7 +499,7 @@ public:
 #endif
     // TxOut(byte raw[], size_t len){ parse(raw, len); };
 
-    uint64_t amount = 0;
+    uint64_t amount;
     Script scriptPubKey;
 
     size_t parse(const uint8_t * raw, size_t l);
@@ -529,14 +529,14 @@ public:
     Tx(Tx const &other);
     Tx &operator=(Tx const &other);
 
-    uint32_t version = 1;
+    uint32_t version;
     TxIn * txIns;
     TxOut * txOuts;
-    uint32_t locktime = 0;
-    bool is_electrum = false;
+    uint32_t locktime;
+    bool is_electrum;
 
-    size_t inputsNumber = 0;
-    size_t outputsNumber = 0;
+    size_t inputsNumber;
+    size_t outputsNumber;
     uint8_t addInput(TxIn txIn);
     uint8_t addOutput(TxOut txOut);
 

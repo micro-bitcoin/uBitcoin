@@ -99,6 +99,8 @@ Script::Script(const PublicKey pubkey, int type){
     }
 }
 Script::Script(const Script &other){
+    scriptLen = 0;
+    scriptArray = NULL;
     if(other.scriptLen > 0){
         scriptLen = other.scriptLen;
         scriptArray = (uint8_t *) calloc( scriptLen, sizeof(uint8_t));

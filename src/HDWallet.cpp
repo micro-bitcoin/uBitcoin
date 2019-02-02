@@ -495,6 +495,8 @@ HDPublicKey::HDPublicKey(void){
     depth = 0;
     memset(fingerprint, 0, 4);
     childNumber = 0;
+    testnet = false;
+    type = UNKNOWN_HD_TYPE;
 }
 HDPublicKey::HDPublicKey(const uint8_t point[64],
                            const uint8_t chain_code[32],

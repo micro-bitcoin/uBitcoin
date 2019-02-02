@@ -10,6 +10,9 @@
 #include "Stream.h"
 #include "Print.h"
 #endif
+#if USE_STD_STRING
+#include <string>
+#endif
 
 #include <string.h>
 #include <stdint.h>
@@ -62,6 +65,9 @@ size_t fromBase58Check(String encoded, uint8_t * output, size_t outputSize);
 
 size_t toBase43Length(const uint8_t * array, size_t arraySize);
 size_t toBase43(const uint8_t * array, size_t arraySize, char * output, size_t outputSize);
+#if USE_STD_STRING
+std::string toBase43(const uint8_t * array, size_t arraySize);
+#endif
 size_t fromBase43Length(const char * array, size_t arraySize);
 size_t fromBase43(const char * encoded, size_t encodedSize, uint8_t * output, size_t outputSize);
 

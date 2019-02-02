@@ -433,7 +433,16 @@ size_t toBase43(const uint8_t * array, size_t arraySize, char * output, size_t o
     memset(output + l, 0, outputSize-l);
     return l;
 }
-
+#if USE_STD_STRING
+std::string toBase43(const uint8_t * array, size_t arraySize){
+  size_t l = toBase43Length(array, arraySize);
+  char * output = (char *)calloc(l+1, sizeof(char));
+  toBase43(array, arraySize, output, l);
+  std::string s(output);
+  free(output);
+  return s;
+}
+#endif
 // TODO: add zero count, fix wrong length
 size_t fromBase43Length(const char * array, size_t arraySize){
     size_t size = arraySize * 68 / 100 + 1;

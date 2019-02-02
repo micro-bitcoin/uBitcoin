@@ -255,6 +255,16 @@ String Script::address(bool testnet) const{
     return String(buffer);
 }
 #endif
+#if USE_STD_STRING
+std::string Script::address(bool testnet) const{
+    char buffer[100] = { 0 };
+    size_t l = address(buffer, sizeof(buffer), testnet);
+    if(l == 0){
+        return string("");
+    }
+    return string(buffer);
+}
+#endif
 size_t Script::length() const{
     return scriptLen + lenVarInt(scriptLen);
 }

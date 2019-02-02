@@ -164,6 +164,9 @@ public:
 #if USE_ARDUINO_STRING
     String address(bool testnet = false) const;
 #endif
+#if USE_STD_STRING
+    std::string address(bool testnet = false) const;
+#endif
 
     size_t length() const;                                    // length of the serialized bytes sequence
     size_t serialize(ByteStream &s) const;                        // serialize to Stream
@@ -437,18 +440,18 @@ public:
  *  TODO: handle large transactions and invalid inputs somehow...
  */
 
-class TransactionInput{
+class TxIn{
 public:
-    TransactionInput();
-    TransactionInput(uint8_t prev_id[32], uint32_t prev_index);
-    TransactionInput(char prev_id_hex[], uint32_t prev_index);
-    TransactionInput(uint8_t prev_id[32], uint32_t prev_index, Script script, uint32_t sequence_number = 0xffffffff);
-    TransactionInput(uint8_t prev_id[32], uint32_t prev_index, uint32_t sequence_number, Script script);
-    TransactionInput(TransactionInput const &other);
-    TransactionInput &operator=(TransactionInput const &other);
+    TxIn();
+    TxIn(uint8_t prev_id[32], uint32_t prev_index);
+    TxIn(char prev_id_hex[], uint32_t prev_index);
+    TxIn(uint8_t prev_id[32], uint32_t prev_index, Script script, uint32_t sequence_number = 0xffffffff);
+    TxIn(uint8_t prev_id[32], uint32_t prev_index, uint32_t sequence_number, Script script);
+    TxIn(TxIn const &other);
+    TxIn &operator=(TxIn const &other);
 
-    // TransactionInput(Stream & s){ parse(s); };
-    // TransactionInput(byte raw[], size_t len){ parse(raw, len); };
+    // TxIn(Stream & s){ parse(s); };
+    // TxIn(byte raw[], size_t len){ parse(raw, len); };
 
     uint8_t hash[32];
     uint32_t outputIndex;
@@ -480,21 +483,21 @@ public:
 #endif
 };
 
-class TransactionOutput{
+class TxOut{
 public:
-    TransactionOutput();
-    TransactionOutput(uint64_t send_amount, Script outputScript);
-    TransactionOutput(uint64_t send_amount, char address[]);
-    TransactionOutput(Script outputScript, uint64_t send_amount);
-    TransactionOutput(char address[], uint64_t send_amount);
-    TransactionOutput(TransactionOutput const &other);
-    TransactionOutput &operator=(TransactionOutput const &other);
+    TxOut();
+    TxOut(uint64_t send_amount, Script outputScript);
+    TxOut(uint64_t send_amount, char address[]);
+    TxOut(Script outputScript, uint64_t send_amount);
+    TxOut(char address[], uint64_t send_amount);
+    TxOut(TxOut const &other);
+    TxOut &operator=(TxOut const &other);
 #if USE_ARDUINO_STRING
-    TransactionOutput(uint64_t send_amount, String address);
-    TransactionOutput(String address, uint64_t send_amount);
-    // TransactionOutput(Stream & s){ parse(s); };
+    TxOut(uint64_t send_amount, String address);
+    TxOut(String address, uint64_t send_amount);
+    // TxOut(Stream & s){ parse(s); };
 #endif
-    // TransactionOutput(byte raw[], size_t len){ parse(raw, len); };
+    // TxOut(byte raw[], size_t len){ parse(raw, len); };
 
     uint64_t amount;
     Script scriptPubKey;
@@ -507,6 +510,9 @@ public:
     size_t parse(ByteStream &s);
     size_t serialize(ByteStream &s); // serialize to Stream
     size_t address(char * buf, size_t len, bool testnet=false);
+#if USE_STD_STRING
+    std::string address(bool testnet=false);
+#endif
 #if USE_ARDUINO_STRING
     String address(bool testnet=false);
     // operator String();
@@ -524,19 +530,23 @@ public:
     Tx &operator=(Tx const &other);
 
     uint32_t version;
-    TransactionInput * txIns;
-    TransactionOutput * txOuts;
+    TxIn * txIns;
+    TxOut * txOuts;
     uint32_t locktime;
     bool is_electrum;
 
-    size_t parse(const uint8_t * raw, size_t len);
     size_t inputsNumber;
     size_t outputsNumber;
-    uint8_t addInput(TransactionInput txIn);
-    uint8_t addOutput(TransactionOutput txOut);
+    uint8_t addInput(TxIn txIn);
+    uint8_t addOutput(TxOut txOut);
 
     size_t length(); // length of the serialized bytes sequence
+    size_t parse(const uint8_t * raw, size_t len);
     size_t parse(ByteStream &s);
+    size_t parseHex(const char * hex, size_t len);
+#if USE_STD_STRING
+    size_t parseHex(const std::string hex);
+#endif
     size_t serialize(ByteStream &s, bool segwit); // serialize to Stream
     size_t serialize(ByteStream &s); // serialize to Stream
     size_t serialize(uint8_t array[], size_t len, bool segwit); // serialize to array
@@ -548,6 +558,7 @@ public:
     String id(); // returns hex string with id of the transaction
 #endif
     bool isSegwit();
+    uint64_t fee();
 
     // populates hash with data for signing certain input with particular scriptPubkey
     int sigHash(uint8_t inputIndex, Script scriptPubKey, uint8_t hash[32]);
@@ -560,7 +571,8 @@ public:
     // signes input and returns scriptSig with signature and public key
     Signature signInput(uint8_t inputIndex, PrivateKey pk);
     Signature signInput(uint8_t inputIndex, PrivateKey pk, Script redeemScript);
-
+    // TODO: signInput(inputIndex, HDPrivateKey);
+    // TODO: sign(HDPrivateKey);
     // TODO: sort() - bip69, Lexicographical Indexing of Transaction Inputs and Outputs
 #if USE_ARDUINO_STRING
     // operator String();

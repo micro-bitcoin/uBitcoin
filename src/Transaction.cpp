@@ -5,12 +5,12 @@
 #include "Conversion.h"
 #include "utility/trezor/sha2.h"
 
-TransactionInput::TransactionInput(void){
+TxIn::TxIn(void){
     Script empty;
     scriptSig = empty;
 }
 // TODO: don't repeat yourself
-TransactionInput::TransactionInput(uint8_t prev_id[32], uint32_t prev_index, Script script, uint32_t sequence_number){
+TxIn::TxIn(uint8_t prev_id[32], uint32_t prev_index, Script script, uint32_t sequence_number){
     // memcpy(hash, prev_id, 32);
     for(int i=0; i<32; i++){
         hash[i] = prev_id[31-i];
@@ -19,8 +19,8 @@ TransactionInput::TransactionInput(uint8_t prev_id[32], uint32_t prev_index, Scr
     scriptSig = script;
     sequence = sequence_number;
 }
-TransactionInput::TransactionInput(uint8_t prev_id[32], uint32_t prev_index, uint32_t sequence_number, Script script){
-    // TransactionInput(prev_id, prev_index, script, sequence_number);
+TxIn::TxIn(uint8_t prev_id[32], uint32_t prev_index, uint32_t sequence_number, Script script){
+    // TxIn(prev_id, prev_index, script, sequence_number);
     for(int i=0; i<32; i++){
         hash[i] = prev_id[31-i];
     }
@@ -28,7 +28,7 @@ TransactionInput::TransactionInput(uint8_t prev_id[32], uint32_t prev_index, uin
     scriptSig = script;
     sequence = sequence_number;
 }
-TransactionInput::TransactionInput(uint8_t prev_id[32], uint32_t prev_index){
+TxIn::TxIn(uint8_t prev_id[32], uint32_t prev_index){
     Script script;
     uint32_t sequence_number = 0xffffffff;
     for(int i=0; i<32; i++){
@@ -37,9 +37,9 @@ TransactionInput::TransactionInput(uint8_t prev_id[32], uint32_t prev_index){
     outputIndex = prev_index;
     scriptSig = script;
     sequence = sequence_number;
-    // TransactionInput(prev_id, prev_index, script, sequence_number);
+    // TxIn(prev_id, prev_index, script, sequence_number);
 }
-TransactionInput::TransactionInput(char prev_id_hex[], uint32_t prev_index){
+TxIn::TxIn(char prev_id_hex[], uint32_t prev_index){
     Script script;
     uint32_t sequence_number = 0xffffffff;
     uint8_t prev_id[32];
@@ -50,9 +50,9 @@ TransactionInput::TransactionInput(char prev_id_hex[], uint32_t prev_index){
     outputIndex = prev_index;
     scriptSig = script;
     sequence = sequence_number;
-    // TransactionInput(prev_id, prev_index, script, sequence_number);
+    // TxIn(prev_id, prev_index, script, sequence_number);
 }
-size_t TransactionInput::parse(ByteStream &s){
+size_t TxIn::parse(ByteStream &s){
     size_t len = 0;
     len += s.readBytes(hash, 32);
     uint8_t arr[4];
@@ -66,7 +66,7 @@ size_t TransactionInput::parse(ByteStream &s){
     }
     return len;
 }
-size_t TransactionInput::parse(const uint8_t * raw, size_t l){
+size_t TxIn::parse(const uint8_t * raw, size_t l){
     size_t len = 0;
     memcpy(hash, raw+len, 32);
     len += 32;
@@ -80,13 +80,13 @@ size_t TransactionInput::parse(const uint8_t * raw, size_t l){
     }
     return len;
 }
-size_t TransactionInput::length(Script script){
+size_t TxIn::length(Script script){
     return 32 + 4 + script.length() + 4;
 }
-size_t TransactionInput::length(){
+size_t TxIn::length(){
     return length(scriptSig);
 }
-size_t TransactionInput::serialize(ByteStream &s, Script script){
+size_t TxIn::serialize(ByteStream &s, Script script){
     size_t len = 0;
     s.write(hash, 32);
     len += 32;
@@ -100,10 +100,10 @@ size_t TransactionInput::serialize(ByteStream &s, Script script){
     len += 4;
     return len;
 }
-size_t TransactionInput::serialize(ByteStream &s){
+size_t TxIn::serialize(ByteStream &s){
     return serialize(s, scriptSig);
 }
-size_t TransactionInput::serialize(uint8_t array[], size_t len, Script script){
+size_t TxIn::serialize(uint8_t array[], size_t len, Script script){
     if(len < length(script)){
         return 0;
     }
@@ -117,17 +117,17 @@ size_t TransactionInput::serialize(uint8_t array[], size_t len, Script script){
     l += 4;
     return l;
 }
-size_t TransactionInput::serialize(uint8_t array[], size_t len){
+size_t TxIn::serialize(uint8_t array[], size_t len){
     return serialize(array, len, scriptSig);
 }
-bool TransactionInput::isSegwit(){
+bool TxIn::isSegwit(){
     int type = scriptPubKey.type();
     if((type == P2WPKH) || (type == P2WSH)){
         return true;
     }
     return (witnessProgram.length() > 1);
 }
-TransactionInput::TransactionInput(TransactionInput const &other){
+TxIn::TxIn(TxIn const &other){
     memcpy(hash, other.hash, 32);
     outputIndex = other.outputIndex;
     scriptSig = other.scriptSig;
@@ -136,7 +136,7 @@ TransactionInput::TransactionInput(TransactionInput const &other){
     amount = other.amount;
     scriptPubKey = other.scriptPubKey;
 }
-TransactionInput &TransactionInput::operator=(TransactionInput const &other){
+TxIn &TxIn::operator=(TxIn const &other){
     memcpy(hash, other.hash, 32);
     outputIndex = other.outputIndex;
     scriptSig = other.scriptSig;
@@ -147,7 +147,7 @@ TransactionInput &TransactionInput::operator=(TransactionInput const &other){
     return *this;
 };
 #if USE_ARDUINO_STRING
-// TransactionInput::operator String(){
+// TxIn::operator String(){
 //     size_t len = length();
 //     uint8_t * ser;
 //     ser = (uint8_t *)calloc(len, sizeof(uint8_t));
@@ -158,44 +158,44 @@ TransactionInput &TransactionInput::operator=(TransactionInput const &other){
 // };
 #endif
 
-TransactionOutput::TransactionOutput(void){
+TxOut::TxOut(void){
     amount = 0;
     Script empty;
     scriptPubKey = empty;
 }
-TransactionOutput::TransactionOutput(uint64_t send_amount, Script outputScript){
+TxOut::TxOut(uint64_t send_amount, Script outputScript){
     amount = send_amount;
     scriptPubKey = outputScript;
 }
-TransactionOutput::TransactionOutput(uint64_t send_amount, char address[]){
+TxOut::TxOut(uint64_t send_amount, char address[]){
     amount = send_amount;
     Script sc(address);
     scriptPubKey = sc;
 }
 #if USE_ARDUINO_STRING
-TransactionOutput::TransactionOutput(uint64_t send_amount, String address){
+TxOut::TxOut(uint64_t send_amount, String address){
     amount = send_amount;
     Script sc(address);
     scriptPubKey = sc;
 }
 #endif
-TransactionOutput::TransactionOutput(Script outputScript, uint64_t send_amount){
+TxOut::TxOut(Script outputScript, uint64_t send_amount){
     amount = send_amount;
     scriptPubKey = outputScript;
 }
-TransactionOutput::TransactionOutput(char address[], uint64_t send_amount){
+TxOut::TxOut(char address[], uint64_t send_amount){
     amount = send_amount;
     Script sc(address);
     scriptPubKey = sc;
 }
 #if USE_ARDUINO_STRING
-TransactionOutput::TransactionOutput(String address, uint64_t send_amount){
+TxOut::TxOut(String address, uint64_t send_amount){
     amount = send_amount;
     Script sc(address);
     scriptPubKey = sc;
 }
 #endif
-size_t TransactionOutput::parse(ByteStream &s){
+size_t TxOut::parse(ByteStream &s){
     size_t len = 0;
     uint8_t arr[8];
     len += s.readBytes(arr, 8);
@@ -206,7 +206,7 @@ size_t TransactionOutput::parse(ByteStream &s){
     }
     return len;
 }
-size_t TransactionOutput::parse(const uint8_t * raw, size_t l){
+size_t TxOut::parse(const uint8_t * raw, size_t l){
   size_t len = 0;
   uint8_t arr[8];
   memcpy(arr, raw, 8);
@@ -218,18 +218,23 @@ size_t TransactionOutput::parse(const uint8_t * raw, size_t l){
   }
   return len;
 }
-size_t TransactionOutput::length(){
+size_t TxOut::length(){
     return 8+scriptPubKey.length();
 }
-size_t TransactionOutput::address(char * buf, size_t len, bool testnet){
+size_t TxOut::address(char * buf, size_t len, bool testnet){
     return scriptPubKey.address(buf, len, testnet);
 }
-#if USE_ARDUINO_STRING
-String TransactionOutput::address(bool testnet){
+#if USE_STD_STRING
+std::string TxOut::address(bool testnet){
     return scriptPubKey.address(testnet);
 }
 #endif
-size_t TransactionOutput::serialize(ByteStream &s){
+#if USE_ARDUINO_STRING
+String TxOut::address(bool testnet){
+    return scriptPubKey.address(testnet);
+}
+#endif
+size_t TxOut::serialize(ByteStream &s){
     uint8_t arr[8];
     size_t len = 0;
     intToLittleEndian(amount, arr, 8);
@@ -238,7 +243,7 @@ size_t TransactionOutput::serialize(ByteStream &s){
     len += scriptPubKey.serialize(s);
     return len;
 }
-size_t TransactionOutput::serialize(uint8_t array[], size_t len){
+size_t TxOut::serialize(uint8_t array[], size_t len){
     if(len < length()){
         return 0;
     }
@@ -247,17 +252,17 @@ size_t TransactionOutput::serialize(uint8_t array[], size_t len){
     l += scriptPubKey.serialize(array+l, len-l);
     return l;
 }
-TransactionOutput::TransactionOutput(TransactionOutput const &other){
+TxOut::TxOut(TxOut const &other){
     amount = other.amount;
     scriptPubKey = other.scriptPubKey;
 }
-TransactionOutput &TransactionOutput::operator=(TransactionOutput const &other){
+TxOut &TxOut::operator=(TxOut const &other){
     amount = other.amount;
     scriptPubKey = other.scriptPubKey;
     return *this;
 };
 #if USE_ARDUINO_STRING
-// TransactionOutput::operator String(){
+// TxOut::operator String(){
 //     size_t len = length();
 //     uint8_t * ser;
 //     ser = (uint8_t *)calloc(len, sizeof(uint8_t));
@@ -286,13 +291,13 @@ Tx::Tx(Tx const &other){
     version = other.version;
     locktime = other.locktime;
     inputsNumber = other.inputsNumber;
-    txIns = (TransactionInput *) calloc( inputsNumber, sizeof(TransactionInput));
-    for(int i=0; i<inputsNumber; i++){
+    txIns = (TxIn *) calloc( inputsNumber, sizeof(TxIn));
+    for(size_t i=0; i<inputsNumber; i++){
         txIns[i] = other.txIns[i];
     }
     outputsNumber = other.outputsNumber;
-    txOuts = (TransactionOutput *) calloc( outputsNumber, sizeof(TransactionOutput));
-    for(int i=0; i<outputsNumber; i++){
+    txOuts = (TxOut *) calloc( outputsNumber, sizeof(TxOut));
+    for(size_t i=0; i<outputsNumber; i++){
         txOuts[i] = other.txOuts[i];
     }
 }
@@ -300,13 +305,13 @@ Tx &Tx::operator=(Tx const &other){
     version = other.version;
     locktime = other.locktime;
     inputsNumber = other.inputsNumber;
-    txIns = (TransactionInput *) calloc( inputsNumber, sizeof(TransactionInput));
-    for(int i=0; i<inputsNumber; i++){
+    txIns = (TxIn *) calloc( inputsNumber, sizeof(TxIn));
+    for(size_t i=0; i<inputsNumber; i++){
         txIns[i] = other.txIns[i];
     }
     outputsNumber = other.outputsNumber;
-    txOuts = (TransactionOutput *) calloc( outputsNumber, sizeof(TransactionOutput));
-    for(int i=0; i<outputsNumber; i++){
+    txOuts = (TxOut *) calloc( outputsNumber, sizeof(TxOut));
+    for(size_t i=0; i<outputsNumber; i++){
         txOuts[i] = other.txOuts[i];
     }
     return *this;
@@ -331,7 +336,7 @@ size_t Tx::parse(ByteStream &s){
     // check if I can get inputs len (not with available() because of timeout)
     l = s.peek(); // do I need all this stuff?
     if(l == 0x00){ // segwit marker
-        uint8_t marker = s.read();
+        s.read(); // marker, just skip
         uint8_t flag = s.read();
         len += 2;
         if(flag != 0x01){
@@ -341,9 +346,9 @@ size_t Tx::parse(ByteStream &s){
     }
     inputsNumber = readVarInt(s);
     len += lenVarInt(inputsNumber);
-    txIns = ( TransactionInput * )calloc( inputsNumber, sizeof(TransactionInput) );
-    for(int i = 0; i < inputsNumber; i++){
-        TransactionInput txIn;
+    txIns = ( TxIn * )calloc( inputsNumber, sizeof(TxIn) );
+    for(size_t i = 0; i < inputsNumber; i++){
+        TxIn txIn;
         l = txIn.parse(s);
         txIns[i] = txIn;
         if(l == 0){
@@ -355,9 +360,9 @@ size_t Tx::parse(ByteStream &s){
 
     outputsNumber = readVarInt(s);
     len += lenVarInt(outputsNumber);
-    txOuts = ( TransactionOutput * )calloc( outputsNumber, sizeof(TransactionOutput) );
-    for(int i = 0; i < outputsNumber; i++){
-        TransactionOutput txOut;
+    txOuts = ( TxOut * )calloc( outputsNumber, sizeof(TxOut) );
+    for(size_t i = 0; i < outputsNumber; i++){
+        TxOut txOut;
         l = txOut.parse(s);
         txOuts[i] = txOut;
         if(l == 0){
@@ -371,13 +376,13 @@ size_t Tx::parse(ByteStream &s){
     uint8_t next = s.peek();
     if(is_segwit){
         if(next < 0xf0){
-            for(int i=0; i<inputsNumber; i++){
+            for(size_t i=0; i<inputsNumber; i++){
                 Script witness_program;
                 size_t numElements = readVarInt(s);
                 uint8_t arr[9];
                 uint8_t l = writeVarInt(numElements, arr, sizeof(arr));
                 witness_program.push(arr, l);
-                for(int j = 0; j < numElements; j++){
+                for(size_t j = 0; j < numElements; j++){
                     Script element;
                     element.parse(s);
                     witness_program.push(element);
@@ -385,7 +390,7 @@ size_t Tx::parse(ByteStream &s){
                 txIns[i].witnessProgram = witness_program;
             }
         }else{
-            for(int i=0; i<inputsNumber; i++){
+            for(size_t i=0; i<inputsNumber; i++){
                 Script witness_program;
                 uint8_t arr[] = { 0 };
                 witness_program.push(arr, sizeof(arr));
@@ -423,8 +428,7 @@ size_t Tx::parse(const uint8_t * raw, size_t len){
   cur += 4;
 
   if(raw[cur] == 0x00){ // segwit marker
-      uint8_t marker = raw[cur];
-      cur ++;
+      cur ++; // skip marker
       uint8_t flag = raw[cur];
       cur ++;
       if(flag != 0x01){
@@ -434,9 +438,9 @@ size_t Tx::parse(const uint8_t * raw, size_t len){
   }
   inputsNumber = readVarInt(raw+cur, len-cur);
   cur += lenVarInt(inputsNumber);
-  txIns = ( TransactionInput * )calloc( inputsNumber, sizeof(TransactionInput) );
-  for(int i = 0; i < inputsNumber; i++){
-      // TransactionInput txIn;
+  txIns = ( TxIn * )calloc( inputsNumber, sizeof(TxIn) );
+  for(size_t i = 0; i < inputsNumber; i++){
+      // TxIn txIn;
       l = txIns[i].parse(raw+cur, len-cur);
       // txIns[i] = txIn;
       if(l == 0){
@@ -451,8 +455,8 @@ size_t Tx::parse(const uint8_t * raw, size_t len){
 
   outputsNumber = readVarInt(raw+cur, len-cur);
   cur += lenVarInt(outputsNumber);
-  txOuts = ( TransactionOutput * )calloc( outputsNumber, sizeof(TransactionOutput) );
-  for(int i = 0; i < outputsNumber; i++){
+  txOuts = ( TxOut * )calloc( outputsNumber, sizeof(TxOut) );
+  for(size_t i = 0; i < outputsNumber; i++){
       l = txOuts[i].parse(raw+cur, len-cur);
       if(l == 0){
           return 0;
@@ -465,14 +469,14 @@ size_t Tx::parse(const uint8_t * raw, size_t len){
   uint8_t next = raw[cur];
   if(is_segwit){
       if(next < 0xf0){
-          for(int i=0; i<inputsNumber; i++){
+          for(size_t i=0; i<inputsNumber; i++){
               Script witness_program;
               size_t numElements = readVarInt(raw+cur, len-cur);
               cur += lenVarInt(numElements);
               uint8_t arr[9];
               l = writeVarInt(numElements, arr, sizeof(arr));
               witness_program.push(arr, l);
-              for(int j = 0; j < numElements; j++){
+              for(size_t j = 0; j < numElements; j++){
                   Script element;
                   l = element.parse(raw+cur, len-cur);
                   cur += l;
@@ -481,7 +485,7 @@ size_t Tx::parse(const uint8_t * raw, size_t len){
               txIns[i].witnessProgram = witness_program;
           }
       }else{
-          for(int i=0; i<inputsNumber; i++){
+          for(size_t i=0; i<inputsNumber; i++){
               Script witness_program;
               uint8_t arr[] = { 0 };
               witness_program.push(arr, sizeof(arr));
@@ -506,47 +510,58 @@ size_t Tx::parse(const uint8_t * raw, size_t len){
   cur += 4;
   return cur;
 }
+size_t Tx::parseHex(const char * hex, size_t len){
+  // find the end of hex string
+  uint8_t * raw = (uint8_t *)calloc(len/2+1, sizeof(uint8_t));
+  size_t l = fromHex(hex, raw, len/2+1);
+  l = parse(raw, l);
+  free(raw);
+  return l;
+}
+size_t Tx::parseHex(const std::string hex){
+  parseHex(hex.c_str(), hex.length());
+}
 bool Tx::isSegwit(){
-    for(int i=0; i<inputsNumber; i++){
+    for(size_t i=0; i<inputsNumber; i++){
         if(txIns[i].isSegwit()){
             return true;
         }
     }
     return false;
 }
-uint8_t Tx::addInput(TransactionInput txIn){
+uint8_t Tx::addInput(TxIn txIn){
     inputsNumber ++;
     if(inputsNumber == 1){
-        txIns = ( TransactionInput * )calloc( inputsNumber, sizeof(TransactionInput) );
+        txIns = ( TxIn * )calloc( inputsNumber, sizeof(TxIn) );
     }else{
-        txIns = ( TransactionInput * )realloc( txIns, inputsNumber * sizeof(TransactionInput) );
-        memset(txIns+inputsNumber-1, 0, sizeof(TransactionInput));
+        txIns = ( TxIn * )realloc( txIns, inputsNumber * sizeof(TxIn) );
+        memset(txIns+inputsNumber-1, 0, sizeof(TxIn));
     }
     txIns[inputsNumber-1] = txIn;
     return inputsNumber;
 }
-uint8_t Tx::addOutput(TransactionOutput txOut){
+uint8_t Tx::addOutput(TxOut txOut){
     outputsNumber ++;
     if(outputsNumber == 1){
-        txOuts = ( TransactionOutput * )calloc( outputsNumber, sizeof(TransactionOutput) );
+        txOuts = ( TxOut * )calloc( outputsNumber, sizeof(TxOut) );
     }else{
-        txOuts = ( TransactionOutput * )realloc( txOuts, outputsNumber * sizeof(TransactionOutput) );
-        memset(txOuts+outputsNumber-1, 0, sizeof(TransactionOutput));
+        txOuts = ( TxOut * )realloc( txOuts, outputsNumber * sizeof(TxOut) );
+        memset(txOuts+outputsNumber-1, 0, sizeof(TxOut));
     }
     txOuts[outputsNumber-1] = txOut;
     return outputsNumber;
 }
 size_t Tx::length(){
     size_t len = 8 + lenVarInt(inputsNumber) + lenVarInt(outputsNumber); // version + locktime + inputsNumber + outputsNumber
-    for(int i=0; i<inputsNumber; i++){
+    for(size_t i=0; i<inputsNumber; i++){
         len += txIns[i].length();
     }
-    for(int i=0; i<outputsNumber; i++){
+    for(size_t i=0; i<outputsNumber; i++){
         len += txOuts[i].length();
     }
     if(isSegwit()){
         len += 2; // marker + flag
-        for(int i=0; i<inputsNumber; i++){
+        for(size_t i=0; i<inputsNumber; i++){
             len += txIns[i].witnessProgram.scriptLength();
         }
     }
@@ -565,16 +580,16 @@ size_t Tx::serialize(ByteStream &s, bool segwit){
     }
     writeVarInt(inputsNumber, s);
     len += lenVarInt(inputsNumber);
-    for(int i=0; i<inputsNumber; i++){
+    for(size_t i=0; i<inputsNumber; i++){
         len += txIns[i].serialize(s);
     }
     writeVarInt(outputsNumber, s);
     len += lenVarInt(outputsNumber);
-    for(int i=0; i<outputsNumber; i++){
+    for(size_t i=0; i<outputsNumber; i++){
         len += txOuts[i].serialize(s);
     }
     if(segwit){
-        for(int i=0; i<inputsNumber; i++){
+        for(size_t i=0; i<inputsNumber; i++){
             txIns[i].witnessProgram.serializeScript(s);
             len += txIns[i].witnessProgram.scriptLength();
         }
@@ -611,15 +626,15 @@ size_t Tx::serialize(uint8_t array[], size_t len, bool segwit){
         cur += 2;
     }
     cur += writeVarInt(inputsNumber, array+cur, len-cur);
-    for(int i=0; i<inputsNumber; i++){
+    for(size_t i=0; i<inputsNumber; i++){
         cur += txIns[i].serialize(array+cur, len-cur);
     }
     cur += writeVarInt(outputsNumber, array+cur, len-cur);
-    for(int i=0; i<outputsNumber; i++){
+    for(size_t i=0; i<outputsNumber; i++){
         cur += txOuts[i].serialize(array+cur, len-cur);
     }
     if(segwit){
-        for(int i=0; i<inputsNumber; i++){
+        for(size_t i=0; i<inputsNumber; i++){
             cur += txIns[i].witnessProgram.serializeScript(array+cur, len-cur);
         }
     }
@@ -640,6 +655,20 @@ int Tx::hash(uint8_t hash[32]){
     doubleSha(arr, len, hash);
     free(arr);
     return 0;
+}
+
+uint64_t Tx::fee(){
+    uint64_t total = 0;
+    for(unsigned int i=0; i<inputsNumber; i++){
+      if(txIns[i].amount == 0){
+        return 0; //can't detect the fee
+      }
+      total += txIns[i].amount;
+    }
+    for(unsigned int i=0; i<outputsNumber; i++){
+      total -= txOuts[i].amount;
+    }
+    return total;
 }
 
 int Tx::id(uint8_t id_arr[32]){
@@ -666,7 +695,7 @@ int Tx::sigHash(uint8_t inputIndex, Script scriptPubKey, uint8_t hash[32]){
     intToLittleEndian(version, arr, 4);
     s.write(arr, 4);
     writeVarInt(inputsNumber, s);
-    for(int i=0; i<inputsNumber; i++){
+    for(size_t i=0; i<inputsNumber; i++){
         if(i != inputIndex){
             txIns[i].serialize(s, empty);
         }else{
@@ -674,7 +703,7 @@ int Tx::sigHash(uint8_t inputIndex, Script scriptPubKey, uint8_t hash[32]){
         }
     }
     writeVarInt(outputsNumber, s);
-    for(int i=0; i<outputsNumber; i++){
+    for(size_t i=0; i<outputsNumber; i++){
         txOuts[i].serialize(s);
     }
     intToLittleEndian(locktime, arr, 4);
@@ -693,7 +722,7 @@ int Tx::sigHash(uint8_t inputIndex, Script scriptPubKey, uint8_t hash[32]){
 
 int Tx::hashPrevouts(uint8_t hash[32]){
     ByteStream s;
-    for(int i=0; i<inputsNumber; i++){
+    for(size_t i=0; i<inputsNumber; i++){
         s.write(txIns[i].hash, 32);
         uint8_t arr[4];
         intToLittleEndian(txIns[i].outputIndex, arr, 4);
@@ -710,7 +739,7 @@ int Tx::hashPrevouts(uint8_t hash[32]){
 
 int Tx::hashSequence(uint8_t hash[32]){
     ByteStream s;
-    for(int i=0; i<inputsNumber; i++){
+    for(size_t i=0; i<inputsNumber; i++){
         uint8_t arr[4];
         intToLittleEndian(txIns[i].sequence, arr, 4);
         s.write(arr, 4);
@@ -726,7 +755,7 @@ int Tx::hashSequence(uint8_t hash[32]){
 
 int Tx::hashOutputs(uint8_t hash[32]){
     ByteStream s;
-    for(int i=0; i<outputsNumber; i++){
+    for(size_t i=0; i<outputsNumber; i++){
         txOuts[i].serialize(s);
     }
     size_t len = s.available();

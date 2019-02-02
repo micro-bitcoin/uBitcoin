@@ -30,9 +30,9 @@ HDPrivateKey	KEYWORD1
 HDPublicKey	KEYWORD1
 Script	KEYWORD1
 Signature	KEYWORD1
-Transaction	KEYWORD1
-TransactionInput	KEYWORD1
-TransactionOutput	KEYWORD1
+Tx	KEYWORD1
+TxIn	KEYWORD1
+TxOut	KEYWORD1
 
 #######################################
 # Methods and Functions (KEYWORD2)

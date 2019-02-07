@@ -9,10 +9,24 @@
 #include "utility/trezor/ecdsa.h"
 #include "utility/trezor/secp256k1.h"
 #include "utility/segwit_addr.h"
+#include "utility/trezor/bip39.h"
 
 #if USE_STD_STRING
 using std::string;
 #endif
+
+const char * generateMnemonic(int strength){
+    return mnemonic_generate(strength);
+}
+const char * generateMnemonic(const uint8_t * entropy_data, size_t dataLen){
+    return mnemonic_from_data(entropy_data, dataLen);
+}
+const char * generateMnemonic(const char * entropy_string){
+    uint8_t hash[32];
+    sha256(entropy_string, strlen(entropy_string), hash);
+    return mnemonic_from_data(hash, sizeof(hash));
+}
+
 // ---------------------------------------------------------------- Signature class
 
 Signature::Signature(){

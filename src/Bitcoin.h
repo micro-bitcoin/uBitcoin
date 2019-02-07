@@ -58,6 +58,20 @@ class HDPublicKey;
 class HDPrivateKey;
 class Script;
 
+const char * generateMnemonic(int strength = 128);
+const char * generateMnemonic(const uint8_t * entropy_data, size_t dataLen);
+const char * generateMnemonic(const char * entropy_string);
+// #if USE_STD_STRING
+// std::string generateMnemonic(std::string entropy_string){
+//   return generateMnemonic(entropy_string.c_str());
+// }
+// #endif
+// #if USE_ARDUINO_STRING
+// String generateMnemonic(String entropy_string){
+//   return generateMnemonic(entropy_string.c_str());
+// }
+// #endif
+
 /*
     Signature class.
     Reference: https://github.com/bitcoin/bips/blob/master/bip-0066.mediawiki

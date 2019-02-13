@@ -528,9 +528,11 @@ size_t Tx::parseHex(const char * hex, size_t len){
   free(raw);
   return l;
 }
+#if USE_STD_STRING
 size_t Tx::parseHex(const std::string hex){
   parseHex(hex.c_str(), hex.length());
 }
+#endif
 bool Tx::isSegwit(){
     for(size_t i=0; i<inputsNumber; i++){
         if(txIns[i].isSegwit()){
@@ -895,13 +897,13 @@ void Tx::sign(HDPrivateKey account){
 }
 
 #if USE_ARDUINO_STRING
-// Tx::operator String(){
-//     size_t len = length();
-//     uint8_t * ser;
-//     ser = (uint8_t *)calloc(len, sizeof(uint8_t));
-//     serialize(ser, len);
-//     String s = toHex(ser, len);
-//     free(ser);
-//     return s;
-// };
+Tx::operator String(){
+    size_t len = length();
+    uint8_t * ser;
+    ser = (uint8_t *)calloc(len, sizeof(uint8_t));
+    serialize(ser, len, isSegwit());
+    String s = toHex(ser, len);
+    free(ser);
+    return s;
+};
 #endif

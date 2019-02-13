@@ -589,7 +589,7 @@ public:
     void sign(HDPrivateKey account);
     // TODO: sort() - bip69, Lexicographical Indexing of Transaction Inputs and Outputs
 #if USE_ARDUINO_STRING
-    // operator String();
+    operator String();
 #endif
 };
 

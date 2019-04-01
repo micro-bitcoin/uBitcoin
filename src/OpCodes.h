@@ -1,6 +1,8 @@
 #ifndef __OPCODES_H__R3NU8EN25O
 #define __OPCODES_H__R3NU8EN25O
 
+#include "uBitcoin_conf.h"
+
 // reference: https://en.bitcoin.it/wiki/Script#Opcodes
 
 // uncomment the following string to use disabled op-codes:

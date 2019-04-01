@@ -5,798 +5,652 @@
 #include "Conversion.h"
 #include "utility/trezor/sha2.h"
 
+//-------------------------------------------------------------------------------------- Transaction Input
+
 TxIn::TxIn(void){
-    Script empty;
-    scriptSig = empty;
     outputIndex = 0;
     sequence = 0;
-    amount=0;
-    memset(derivation, 0, 2);
     memset(hash, 0, 32);
+    status = PARSING_DONE;
+    bytes_parsed = 0;
 }
-// TODO: don't repeat yourself
-TxIn::TxIn(uint8_t prev_id[32], uint32_t prev_index, Script script, uint32_t sequence_number){
-    // memcpy(hash, prev_id, 32);
+TxIn::TxIn(const uint8_t prev_id[32], uint32_t prev_index, uint32_t sequence_number):TxIn(){
+    outputIndex = prev_index;
+    sequence = sequence_number;
     for(int i=0; i<32; i++){
         hash[i] = prev_id[31-i];
     }
-    outputIndex = prev_index;
-    scriptSig = script;
-    sequence = sequence_number;
 }
-TxIn::TxIn(uint8_t prev_id[32], uint32_t prev_index, uint32_t sequence_number, Script script){
-    // TxIn(prev_id, prev_index, script, sequence_number);
-    for(int i=0; i<32; i++){
-        hash[i] = prev_id[31-i];
+TxIn::TxIn(const uint8_t prev_id[32], uint32_t prev_index, const Script script, uint32_t sequence_number):TxIn(prev_id, prev_index, sequence_number){
+    scriptSig = script;
+}
+TxIn::TxIn(const char * prev_id, uint32_t prev_index, uint32_t sequence_number):TxIn(){
+    memset(hash, 0, 32);
+    if(strlen(prev_id) < 64){
+        return;
     }
     outputIndex = prev_index;
-    scriptSig = script;
     sequence = sequence_number;
-}
-TxIn::TxIn(uint8_t prev_id[32], uint32_t prev_index){
-    Script script;
-    uint32_t sequence_number = 0xffffffff;
+    uint8_t arr[32];
+    fromHex(prev_id, 64, arr, 32);
     for(int i=0; i<32; i++){
-        hash[i] = prev_id[31-i];
+        hash[i] = arr[31-i];
     }
-    outputIndex = prev_index;
-    scriptSig = script;
-    sequence = sequence_number;
-    // TxIn(prev_id, prev_index, script, sequence_number);
 }
-TxIn::TxIn(char prev_id_hex[], uint32_t prev_index){
-    Script script;
-    uint32_t sequence_number = 0xffffffff;
-    uint8_t prev_id[32];
-    fromHex(prev_id_hex, prev_id, sizeof(prev_id));
-    for(int i=0; i<32; i++){
-        hash[i] = prev_id[31-i];
+TxIn::TxIn(const char * prev_id, uint32_t prev_index, const Script script, uint32_t sequence_number):TxIn(prev_id, prev_index, sequence_number){
+    if(strlen(prev_id) < 64){
+        return;
     }
-    outputIndex = prev_index;
     scriptSig = script;
-    sequence = sequence_number;
-    // TxIn(prev_id, prev_index, script, sequence_number);
 }
-size_t TxIn::parse(ByteStream &s){
-    size_t len = 0;
-    len += s.readBytes(hash, 32);
-    uint8_t arr[4];
-    len += s.readBytes(arr, 4);
-    outputIndex = littleEndianToInt(arr, 4);
-    len += scriptSig.parse(s);
-    len += s.readBytes(arr, 4);
-    sequence = littleEndianToInt(arr, 4);
-    if((len != 32+4+scriptSig.length()+4) || (scriptSig.length() == 0)){
+size_t TxIn::from_stream(ParseStream *s){
+    if(status == PARSING_FAILED){
         return 0;
     }
-    return len;
-}
-size_t TxIn::parse(const uint8_t * raw, size_t l){
-    size_t len = 0;
-    memcpy(hash, raw+len, 32);
-    len += 32;
-    outputIndex = littleEndianToInt(raw+len, 4);
-    len += 4;
-    len += scriptSig.parse(raw+len, l-len);
-    sequence = littleEndianToInt(raw+len, 4);
-    len += 4;
-    if((len != 32+4+scriptSig.length()+4) || (scriptSig.length() == 0)){
-        return 0;
+    if(status == PARSING_DONE){
+        bytes_parsed = 0;
+        outputIndex = 0;
+        sequence = 0;
+        scriptSig = Script();
     }
-    return len;
+    status = PARSING_INCOMPLETE;
+    size_t bytes_read = 0;
+    while(s->available() && bytes_read+bytes_parsed<32){
+        hash[bytes_read+bytes_parsed] = s->read();
+        bytes_read++;
+    }
+    while(s->available() && bytes_read+bytes_parsed<32+4){
+        uint8_t c = s->read();
+        outputIndex += (c << (8*(bytes_read+bytes_parsed-32)));
+        bytes_read++;
+    }
+    if(s->available() && bytes_read+bytes_parsed == 32+4){
+        bytes_read += s->parse(&scriptSig);
+    }
+    if(s->available() && scriptSig.getStatus() == PARSING_INCOMPLETE){
+        bytes_read += s->parse(&scriptSig);
+    }
+    if(scriptSig.getStatus() == PARSING_FAILED){
+        status = PARSING_FAILED;
+        bytes_parsed+=bytes_read;
+        return bytes_read;
+    }
+    while(s->available() && bytes_read+bytes_parsed < 32+4+scriptSig.length()+4){
+        uint8_t c = s->read();
+        sequence += (c << (8*(bytes_read+bytes_parsed-scriptSig.length()-32-4)));
+        bytes_read++;
+    }
+    if(scriptSig.getStatus() == PARSING_DONE && bytes_read+bytes_parsed == 32+4+scriptSig.length()+4){
+        status = PARSING_DONE;
+    }
+    bytes_parsed+=bytes_read;
+    return bytes_read;
 }
-size_t TxIn::length(Script script){
-    return 32 + 4 + script.length() + 4;
-}
-size_t TxIn::length(){
-    return length(scriptSig);
-}
-size_t TxIn::serialize(ByteStream &s, Script script){
-    size_t len = 0;
-    s.write(hash, 32);
-    len += 32;
+size_t TxIn::to_stream(SerializeStream *s, size_t offset) const{
+    size_t bytes_written = 0;
+    while(s->available() && bytes_written+offset < 32){
+        s->write(hash[bytes_written+offset]);
+        bytes_written++;
+    }
     uint8_t arr[4];
     intToLittleEndian(outputIndex, arr, 4);
-    s.write(arr, 4);
-    len += 4;
-    len += script.serialize(s);
+    while(s->available() && bytes_written+offset < 32+4){
+        s->write(arr[bytes_written+offset-32]);
+        bytes_written++;
+    }
+    size_t len = scriptSig.length();
+    if(s->available() && bytes_written+offset < 32+4+len){
+        bytes_written+=s->serialize(&scriptSig, bytes_written+offset-32-4);
+    }
     intToLittleEndian(sequence, arr, 4);
-    s.write(arr, 4);
-    len += 4;
-    return len;
-}
-size_t TxIn::serialize(ByteStream &s){
-    return serialize(s, scriptSig);
-}
-size_t TxIn::serialize(uint8_t array[], size_t len, Script script){
-    if(len < length(script)){
-        return 0;
+    while(s->available() && bytes_written+offset < 32+4+len+4){
+        s->write(arr[bytes_written+offset-(32+4+len)]);
+        bytes_written++;
     }
-    size_t l = 0;
-    memcpy(array, hash, 32);
-    l += 32;
-    intToLittleEndian(outputIndex, array+l, 4);
-    l += 4;
-    l += script.serialize(array+l, len-l);
-    intToLittleEndian(sequence, array+l, 4);
-    l += 4;
-    return l;
+    return bytes_written;
 }
-size_t TxIn::serialize(uint8_t array[], size_t len){
-    return serialize(array, len, scriptSig);
+size_t TxIn::length() const{
+    return 32+4+scriptSig.length()+4;
 }
-bool TxIn::isSegwit(){
-    int type = scriptPubKey.type();
-    if((type == P2WPKH) || (type == P2WSH)){
-        return true;
-    }
-    return (witnessProgram.length() > 1);
-}
-TxIn::TxIn(TxIn const &other){
-    memcpy(hash, other.hash, 32);
-    outputIndex = other.outputIndex;
-    scriptSig = other.scriptSig;
-    sequence = other.sequence;
-    witnessProgram = other.witnessProgram;
-    amount = other.amount;
-    scriptPubKey = other.scriptPubKey;
-}
-TxIn &TxIn::operator=(TxIn const &other){
-    memcpy(hash, other.hash, 32);
-    outputIndex = other.outputIndex;
-    scriptSig = other.scriptSig;
-    sequence = other.sequence;
-    witnessProgram = other.witnessProgram;
-    amount = other.amount;
-    scriptPubKey = other.scriptPubKey;
-    return *this;
-};
-#if USE_ARDUINO_STRING
-// TxIn::operator String(){
-//     size_t len = length();
-//     uint8_t * ser;
-//     ser = (uint8_t *)calloc(len, sizeof(uint8_t));
-//     serialize(ser, len);
-//     String s = toHex(ser, len);
-//     free(ser);
-//     return s;
-// };
-#endif
 
-TxOut::TxOut(void){
-    amount = 0;
-    Script empty;
-    scriptPubKey = empty;
-}
-TxOut::TxOut(uint64_t send_amount, Script outputScript){
-    amount = send_amount;
-    scriptPubKey = outputScript;
-}
-TxOut::TxOut(uint64_t send_amount, char address[]){
-    amount = send_amount;
-    Script sc(address);
-    scriptPubKey = sc;
-}
-#if USE_ARDUINO_STRING
-TxOut::TxOut(uint64_t send_amount, String address){
-    amount = send_amount;
-    Script sc(address);
-    scriptPubKey = sc;
-}
-#endif
-TxOut::TxOut(Script outputScript, uint64_t send_amount){
-    amount = send_amount;
-    scriptPubKey = outputScript;
-}
-TxOut::TxOut(char address[], uint64_t send_amount){
-    amount = send_amount;
-    Script sc(address);
-    scriptPubKey = sc;
-}
-#if USE_ARDUINO_STRING
-TxOut::TxOut(String address, uint64_t send_amount){
-    amount = send_amount;
-    Script sc(address);
-    scriptPubKey = sc;
-}
-#endif
-size_t TxOut::parse(ByteStream &s){
-    size_t len = 0;
-    uint8_t arr[8];
-    len += s.readBytes(arr, 8);
-    amount = littleEndianToInt(arr, 8);
-    len += scriptPubKey.parse(s);
-    if((len != 8+scriptPubKey.length()) || (scriptPubKey.length() == 0)){
+//-------------------------------------------------------------------------------------- Transaction Output
+
+size_t TxOut::from_stream(ParseStream *s){
+    if(status == PARSING_FAILED){
         return 0;
     }
-    return len;
+    if(status == PARSING_DONE){
+        bytes_parsed = 0;
+        amount = 0;
+        scriptPubkey.clear(); scriptPubkey.reset();
+    }
+    status = PARSING_INCOMPLETE;
+    size_t bytes_read = 0;
+    while(s->available() && bytes_read+bytes_parsed<8){
+        uint8_t c = s->read();
+        amount += (c << (8*(bytes_read+bytes_parsed-32)));
+        bytes_read++;
+    }
+    if(s->available() && bytes_read+bytes_parsed == 8){
+        bytes_read += s->parse(&scriptPubkey);
+    }
+    if(s->available() && scriptPubkey.getStatus() == PARSING_INCOMPLETE){
+        bytes_read += s->parse(&scriptPubkey);
+    }
+    if(scriptPubkey.getStatus() == PARSING_FAILED){
+        status = PARSING_FAILED;
+        bytes_parsed+=bytes_read;
+        return bytes_read;
+    }
+    if(scriptPubkey.getStatus() == PARSING_DONE && bytes_read+bytes_parsed == 8+scriptPubkey.length()){
+        status = PARSING_DONE;
+    }
+    bytes_parsed+=bytes_read;
+    return bytes_read;
 }
-size_t TxOut::parse(const uint8_t * raw, size_t l){
-  size_t len = 0;
-  uint8_t arr[8];
-  memcpy(arr, raw, 8);
-  len += 8;
-  amount = littleEndianToInt(arr, 8);
-  len += scriptPubKey.parse(raw+len, l-len);
-  if((len != 8+scriptPubKey.length()) || (scriptPubKey.length() == 0)){
-      return 0;
-  }
-  return len;
-}
-size_t TxOut::length(){
-    return 8+scriptPubKey.length();
-}
-size_t TxOut::address(char * buf, size_t len, bool testnet){
-    return scriptPubKey.address(buf, len, testnet);
-}
-#if USE_STD_STRING
-std::string TxOut::address(bool testnet){
-    return scriptPubKey.address(testnet);
-}
-#endif
-#if USE_ARDUINO_STRING
-String TxOut::address(bool testnet){
-    return scriptPubKey.address(testnet);
-}
-#endif
-size_t TxOut::serialize(ByteStream &s){
-    uint8_t arr[8];
-    size_t len = 0;
+
+size_t TxOut::to_stream(SerializeStream *s, size_t offset) const{
+    size_t bytes_written = 0;
+    uint8_t arr[8] = { 0 };
     intToLittleEndian(amount, arr, 8);
-    len += 8;
-    s.write(arr, 8);
-    len += scriptPubKey.serialize(s);
-    return len;
-}
-size_t TxOut::serialize(uint8_t array[], size_t len){
-    if(len < length()){
-        return 0;
+    while(s->available() && bytes_written+offset < 8){
+        s->write(arr[bytes_written+offset]);
+        bytes_written++;
     }
-    intToLittleEndian(amount, array, 8);
-    size_t l = 8;
-    l += scriptPubKey.serialize(array+l, len-l);
-    return l;
+    size_t len = scriptPubkey.length();
+    if(s->available() && bytes_written+offset < 8+len){
+        bytes_written += s->serialize(&scriptPubkey, bytes_written+offset-8);
+    }
+    return bytes_written;
 }
-TxOut::TxOut(TxOut const &other){
-    amount = other.amount;
-    scriptPubKey = other.scriptPubKey;
-}
-TxOut &TxOut::operator=(TxOut const &other){
-    amount = other.amount;
-    scriptPubKey = other.scriptPubKey;
-    return *this;
-};
-#if USE_ARDUINO_STRING
-// TxOut::operator String(){
-//     size_t len = length();
-//     uint8_t * ser;
-//     ser = (uint8_t *)calloc(len, sizeof(uint8_t));
-//     serialize(ser, len);
-//     String s = toHex(ser, len);
-//     free(ser);
-//     return s;
-// };
-#endif
 
-// TODO: copy constructor, = operator
-Tx::Tx(void){
+//-------------------------------------------------------------------------------------- Transaction
+
+Tx::Tx(){
+    version = 1;
     inputsNumber = 0;
     outputsNumber = 0;
     txIns = NULL;
     txOuts = NULL;
-    version = 1;
     locktime = 0;
-    is_electrum = false;
+    segwit_flag = 1;
+    status = PARSING_DONE;
+    bytes_parsed = 0;
 }
-Tx::~Tx(void){
-    if(inputsNumber > 0){
-        free(txIns);
-    }
-    if(outputsNumber > 0){
-        free(txOuts);
-    }
-}
-Tx::Tx(Tx const &other){
-    // TODO: just serialize() and parse()
+Tx::Tx(const Tx & other):Tx(){
     version = other.version;
-    locktime = other.locktime;
     inputsNumber = other.inputsNumber;
-    txIns = (TxIn *) calloc( inputsNumber, sizeof(TxIn));
-    for(size_t i=0; i<inputsNumber; i++){
+    outputsNumber = other.outputsNumber;
+    txIns = new TxIn[inputsNumber];
+    txOuts = new TxOut[outputsNumber];
+    for(unsigned int i=0;i<inputsNumber;i++){
         txIns[i] = other.txIns[i];
     }
-    outputsNumber = other.outputsNumber;
-    txOuts = (TxOut *) calloc( outputsNumber, sizeof(TxOut));
-    for(size_t i=0; i<outputsNumber; i++){
+    for(unsigned int i=0;i<outputsNumber;i++){
         txOuts[i] = other.txOuts[i];
     }
-}
-Tx &Tx::operator=(Tx const &other){
-    version = other.version;
     locktime = other.locktime;
+    segwit_flag = other.segwit_flag;
+    status = other.status;
+    bytes_parsed = other.bytes_parsed;
+}
+Tx& Tx::operator=(Tx const &other){ // copy-paste =(
+    version = other.version;
     inputsNumber = other.inputsNumber;
-    txIns = (TxIn *) calloc( inputsNumber, sizeof(TxIn));
-    for(size_t i=0; i<inputsNumber; i++){
+    outputsNumber = other.outputsNumber;
+    txIns = new TxIn[inputsNumber];
+    txOuts = new TxOut[outputsNumber];
+    for(unsigned int i=0;i<inputsNumber;i++){
         txIns[i] = other.txIns[i];
     }
-    outputsNumber = other.outputsNumber;
-    txOuts = (TxOut *) calloc( outputsNumber, sizeof(TxOut));
-    for(size_t i=0; i<outputsNumber; i++){
+    for(unsigned int i=0;i<outputsNumber;i++){
         txOuts[i] = other.txOuts[i];
     }
+    locktime = other.locktime;
+    segwit_flag = other.segwit_flag;
+    status = other.status;
+    bytes_parsed = other.bytes_parsed;
     return *this;
-};
-size_t Tx::parse(ByteStream &s){
-    bool is_segwit = false;
+}
+Tx::~Tx(){
+    clear();
+}
+void Tx::clear(){
     if(inputsNumber > 0){
-        free(txIns);
+        inputsNumber = 0;
+        delete [] txIns;
+        txIns = NULL;
     }
     if(outputsNumber > 0){
-        free(txOuts);
+        outputsNumber = 0;
+        delete [] txOuts;
+        txOuts = NULL;
     }
-    size_t len = 0;
-    size_t l;
-    uint8_t arr[4];
-    len += s.readBytes(arr, 4);
-    version = littleEndianToInt(arr, 4);
-    if(len != 4){
-        return 0;
-    }
-
-    // check if I can get inputs len (not with available() because of timeout)
-    l = s.peek(); // do I need all this stuff?
-    if(l == 0x00){ // segwit marker
-        s.read(); // marker, just skip
-        uint8_t flag = s.read();
-        len += 2;
-        if(flag != 0x01){
-            return 0; // wrong segwit flag
-        }
-        is_segwit = true;
-    }
-    inputsNumber = readVarInt(s);
-    len += lenVarInt(inputsNumber);
-    txIns = ( TxIn * )calloc( inputsNumber, sizeof(TxIn) );
-    for(size_t i = 0; i < inputsNumber; i++){
-        TxIn txIn;
-        l = txIn.parse(s);
-        txIns[i] = txIn;
-        if(l == 0){
-            return 0;
-        }else{
-            len += l;
+}
+size_t Tx::length() const{
+    bool is_segwit = isSegwit();
+    size_t l = 4+4+lenVarInt(inputsNumber)+lenVarInt(outputsNumber)+2*is_segwit;
+    for(unsigned int i=0; i<inputsNumber; i++){
+        l += txIns[i].length();
+        if(is_segwit){
+            l += txIns[i].witness.length();
         }
     }
-
-    outputsNumber = readVarInt(s);
-    len += lenVarInt(outputsNumber);
-    txOuts = ( TxOut * )calloc( outputsNumber, sizeof(TxOut) );
-    for(size_t i = 0; i < outputsNumber; i++){
-        TxOut txOut;
-        l = txOut.parse(s);
-        txOuts[i] = txOut;
-        if(l == 0){
-            return 0;
-        }else{
-            len += l;
-        }
+    for(unsigned int i=0; i<outputsNumber; i++){
+        l += txOuts[i].length();
     }
-    // FIXME: terrible workaround for electrum transaction
-    // FIXME: should detect if there is no witness
-    uint8_t next = s.peek();
-    if(is_segwit){
-        if(next < 0xf0){
-            for(size_t i=0; i<inputsNumber; i++){
-                Script witness_program;
-                size_t numElements = readVarInt(s);
-                uint8_t arr[9];
-                uint8_t l = writeVarInt(numElements, arr, sizeof(arr));
-                witness_program.push(arr, l);
-                for(size_t j = 0; j < numElements; j++){
-                    Script element;
-                    element.parse(s);
-                    witness_program.push(element);
-                }
-                txIns[i].witnessProgram = witness_program;
-            }
-        }else{
-            for(size_t i=0; i<inputsNumber; i++){
-                Script witness_program;
-                uint8_t arr[] = { 0 };
-                witness_program.push(arr, sizeof(arr));
-                txIns[i].witnessProgram = witness_program;
-            }
-        }
-    }
-
-    l = s.readBytes(arr, 4);
-    if(l != 4){
-        return 0;
-    }else{
-        len += l;
-    }
-    locktime = littleEndianToInt(arr, 4);
-    return len;
+    return l;
 }
-
-size_t Tx::parse(const uint8_t * raw, size_t len){
-  size_t cur = 0;
-  uint8_t electrumPrefix[4] = {0x45, 0x50, 0x54, 0x46};
-  if(len>4 && memcmp(raw, electrumPrefix, 4)==0){
-    is_electrum = true;
-    cur += 6; // just skip electrum prefix
-  }
-  bool is_segwit = false;
-  if(inputsNumber > 0){
-      free(txIns);
-  }
-  if(outputsNumber > 0){
-      free(txOuts);
-  }
-  size_t l;
-  version = littleEndianToInt(raw+cur, 4);
-  cur += 4;
-
-  if(raw[cur] == 0x00){ // segwit marker
-      cur ++; // skip marker
-      uint8_t flag = raw[cur];
-      cur ++;
-      if(flag != 0x01){
-          return 0; // wrong segwit flag
-      }
-      is_segwit = true;
-  }
-  inputsNumber = readVarInt(raw+cur, len-cur);
-  cur += lenVarInt(inputsNumber);
-  txIns = ( TxIn * )calloc( inputsNumber, sizeof(TxIn) );
-  for(size_t i = 0; i < inputsNumber; i++){
-      // TxIn txIn;
-      l = txIns[i].parse(raw+cur, len-cur);
-      // txIns[i] = txIn;
-      if(l == 0){
-          return 0;
-      }else{
-          cur += l;
-      }
-  }
-  if(cur >= len-1){
-    return 0;
-  }
-
-  outputsNumber = readVarInt(raw+cur, len-cur);
-  cur += lenVarInt(outputsNumber);
-  txOuts = ( TxOut * )calloc( outputsNumber, sizeof(TxOut) );
-  for(size_t i = 0; i < outputsNumber; i++){
-      l = txOuts[i].parse(raw+cur, len-cur);
-      if(l == 0){
-          return 0;
-      }else{
-          cur += l;
-      }
-  }
-  // FIXME: terrible workaround for electrum transaction
-  // FIXME: should detect if there is no witness
-  uint8_t next = raw[cur];
-  if(is_segwit){
-      if(next < 0xf0){
-          for(size_t i=0; i<inputsNumber; i++){
-              Script witness_program;
-              size_t numElements = readVarInt(raw+cur, len-cur);
-              cur += lenVarInt(numElements);
-              uint8_t arr[9];
-              l = writeVarInt(numElements, arr, sizeof(arr));
-              witness_program.push(arr, l);
-              for(size_t j = 0; j < numElements; j++){
-                  Script element;
-                  l = element.parse(raw+cur, len-cur);
-                  cur += l;
-                  witness_program.push(element);
-              }
-              txIns[i].witnessProgram = witness_program;
-          }
-      }else{
-          for(size_t i=0; i<inputsNumber; i++){
-              Script witness_program;
-              uint8_t arr[] = { 0 };
-              witness_program.push(arr, sizeof(arr));
-              txIns[i].witnessProgram = witness_program;
-
-              cur += 5; // feffffffff
-              txIns[i].amount = littleEndianToInt(raw+cur, 8);
-              cur += 8 + 5;
-              cur += raw[cur] + 1 - 4;
-              txIns[i].derivation[0] = littleEndianToInt(raw+cur, 2);
-              cur += 2;
-              txIns[i].derivation[1] = littleEndianToInt(raw+cur, 2);
-              cur += 2;
-          }
-      }
-  }
-
-  if(len-cur < 4){
-      return 0;
-  }
-  locktime = littleEndianToInt(raw+cur, 4);
-  cur += 4;
-  return cur;
-}
-size_t Tx::parseHex(const char * hex, size_t len){
-  // find the end of hex string
-  uint8_t * raw = (uint8_t *)calloc(len/2+1, sizeof(uint8_t));
-  size_t l = fromHex(hex, raw, len/2+1);
-  l = parse(raw, l);
-  free(raw);
-  return l;
-}
-#if USE_STD_STRING
-size_t Tx::parseHex(const std::string hex){
-  parseHex(hex.c_str(), hex.length());
-}
-#endif
-bool Tx::isSegwit(){
-    for(size_t i=0; i<inputsNumber; i++){
+bool Tx::isSegwit() const{
+    for(unsigned int i=0; i<inputsNumber; i++){
         if(txIns[i].isSegwit()){
             return true;
         }
     }
     return false;
 }
-uint8_t Tx::addInput(TxIn txIn){
-    inputsNumber ++;
-    if(inputsNumber == 1){
-        txIns = ( TxIn * )calloc( inputsNumber, sizeof(TxIn) );
-    }else{
-        txIns = ( TxIn * )realloc( txIns, inputsNumber * sizeof(TxIn) );
-        memset(txIns+inputsNumber-1, 0, sizeof(TxIn));
-    }
-    txIns[inputsNumber-1] = txIn;
-    return inputsNumber;
-}
-uint8_t Tx::addOutput(TxOut txOut){
-    outputsNumber ++;
-    if(outputsNumber == 1){
-        txOuts = ( TxOut * )calloc( outputsNumber, sizeof(TxOut) );
-    }else{
-        txOuts = ( TxOut * )realloc( txOuts, outputsNumber * sizeof(TxOut) );
-        memset(txOuts+outputsNumber-1, 0, sizeof(TxOut));
-    }
-    txOuts[outputsNumber-1] = txOut;
-    return outputsNumber;
-}
-size_t Tx::length(){
-    size_t len = 8 + lenVarInt(inputsNumber) + lenVarInt(outputsNumber); // version + locktime + inputsNumber + outputsNumber
-    for(size_t i=0; i<inputsNumber; i++){
-        len += txIns[i].length();
-    }
-    for(size_t i=0; i<outputsNumber; i++){
-        len += txOuts[i].length();
-    }
-    if(isSegwit()){
-        len += 2; // marker + flag
-        for(size_t i=0; i<inputsNumber; i++){
-            len += txIns[i].witnessProgram.scriptLength();
-        }
-    }
-    return len;
-}
-size_t Tx::serialize(ByteStream &s, bool segwit){
-    uint8_t arr[4];
-    size_t len = 0;
+size_t Tx::to_stream(SerializeStream *s, size_t offset) const{
+    size_t bytes_written = 0;
+    uint8_t arr[10] = { 0 }; // we will store varints and other numbers here
     intToLittleEndian(version, arr, 4);
-    s.write(arr, 4);
-    len += 4;
-    if(segwit){
-        len += 2;
-        uint8_t arr[2] = { 0, 1 };
-        s.write(arr, 2); // marker + flag
+    while(s->available() && bytes_written+offset < 4){
+        s->write(arr[bytes_written+offset]);
+        bytes_written++;
     }
-    writeVarInt(inputsNumber, s);
-    len += lenVarInt(inputsNumber);
-    for(size_t i=0; i<inputsNumber; i++){
-        len += txIns[i].serialize(s);
+    bool is_segwit = isSegwit();
+    if(is_segwit && s->available() && bytes_written+offset == 4){
+        s->write(0x00); // segwit marker
+        bytes_written++;
     }
-    writeVarInt(outputsNumber, s);
-    len += lenVarInt(outputsNumber);
-    for(size_t i=0; i<outputsNumber; i++){
-        len += txOuts[i].serialize(s);
+    if(is_segwit && s->available() && bytes_written+offset == 5){
+        s->write(0x01); // segwit flag
+        bytes_written++;
     }
-    if(segwit){
-        for(size_t i=0; i<inputsNumber; i++){
-            txIns[i].witnessProgram.serializeScript(s);
-            len += txIns[i].witnessProgram.scriptLength();
+    size_t cur_offset = 4+2*is_segwit;
+    size_t l = writeVarInt(inputsNumber, arr, 10);
+    if(s->available() && bytes_written+offset < cur_offset+l){
+        s->write(arr[bytes_written+offset-cur_offset]);
+        bytes_written++;
+    }
+    cur_offset+=l;
+    for(unsigned int i=0; i<inputsNumber; i++){
+        l = txIns[i].length();
+        if(s->available() && bytes_written+offset < cur_offset+l){
+            bytes_written += s->serialize(&txIns[i], bytes_written+offset-cur_offset);
+        }
+        cur_offset+=l;
+    }
+    l = writeVarInt(outputsNumber, arr, 10);
+    if(s->available() && bytes_written+offset < cur_offset+l){
+        s->write(arr[bytes_written+offset-cur_offset]);
+        bytes_written++;
+    }
+    cur_offset += l;
+    for(unsigned int i=0; i<outputsNumber; i++){
+        l = txOuts[i].length();
+        if(s->available() && bytes_written+offset < cur_offset+l){
+            bytes_written += s->serialize(&txOuts[i], bytes_written+offset-cur_offset);
+        }
+        cur_offset+=l;
+    }
+    if(is_segwit){
+        for(unsigned int i=0; i<inputsNumber; i++){
+            l = txIns[i].witness.length();
+            if(s->available() && bytes_written+offset < cur_offset+l){
+                bytes_written += s->serialize(&txIns[i].witness, bytes_written+offset-cur_offset);
+            }
+            cur_offset+=l;
         }
     }
     intToLittleEndian(locktime, arr, 4);
-    s.write(arr, 4);
-    len += 4;
-    return len;
+    while(s->available() && bytes_written+offset < cur_offset+4){
+        s->write(arr[bytes_written+offset-cur_offset]);
+        bytes_written++;
+    }
+    return bytes_written;
 }
-size_t Tx::serialize(ByteStream &s){
-    bool is_segwit = isSegwit();
-    return serialize(s, is_segwit);
-}
-
-size_t Tx::serialize(uint8_t array[], size_t len, bool segwit){
-    // return 0; // FIXME!
-    // ByteStream s;
-    // serialize(s);
-    // if(s.available() > len){
-    //     return 0;
-    // }
-    // size_t l = s.available();
-    // s.readBytes(array, l);
-    // return l;
-    if(length() > len){
-      return 0;
+size_t Tx::from_stream(ParseStream *s){
+    if(status == PARSING_FAILED){
+        return 0;
     }
-    size_t cur = 0;
-    intToLittleEndian(version, array+cur, 4);
-    cur += 4;
-    if(segwit){
-        array[cur] = 0;
-        array[cur+1] = 1;
-        cur += 2;
+    if(status == PARSING_DONE){
+        clear();
+        bytes_parsed = 0;
+        version = 0;
+        locktime = 0;
+        segwit_flag = 0; // keep segwit flag during parsing...
     }
-    cur += writeVarInt(inputsNumber, array+cur, len-cur);
-    for(size_t i=0; i<inputsNumber; i++){
-        cur += txIns[i].serialize(array+cur, len-cur);
+    status = PARSING_INCOMPLETE;
+    size_t bytes_read = 0;
+    while(s->available() && bytes_read+bytes_parsed<4){
+        uint8_t c = s->read();
+        version += (c << (8*(bytes_read+bytes_parsed)));
+        bytes_read++;
     }
-    cur += writeVarInt(outputsNumber, array+cur, len-cur);
-    for(size_t i=0; i<outputsNumber; i++){
-        cur += txOuts[i].serialize(array+cur, len-cur);
-    }
-    if(segwit){
-        for(size_t i=0; i<inputsNumber; i++){
-            cur += txIns[i].witnessProgram.serializeScript(array+cur, len-cur);
+    if(s->available() && bytes_read+bytes_parsed == 4){
+        uint8_t c = s->read();
+        bytes_read++;
+        if(c == 0x00){ // segwit!
+            segwit_flag = 1;
+        }else{
+            inputsNumber = c; // FIXME: should be varint, but 255 inputs will kill the MCU...
+            txIns = new TxIn[inputsNumber];
+            for(unsigned int i=0; i<inputsNumber; i++){ // this will at least set all txins to PARSING_INCOMPLETE
+                bytes_read += s->parse(&txIns[i]);
+            }
         }
     }
-    intToLittleEndian(locktime, array+cur, 4);
-    cur += 4;
-    return len;
-}
-
-int Tx::hash(uint8_t hash[32]){
-    // TODO: refactor with stream hash functions
-    // FIXME!
-    ByteStream s;
-    serialize(s, false);
-    size_t len = s.available();
-    uint8_t * arr;
-    arr = (uint8_t *) calloc( len, sizeof(uint8_t));
-    s.readBytes(arr, len);
-    doubleSha(arr, len, hash);
-    free(arr);
-    return 0;
-}
-
-uint64_t Tx::fee(){
-    uint64_t total = 0;
+    if(s->available() && segwit_flag > 0 && bytes_read+bytes_parsed == 5){
+        uint8_t c = s->read();
+        bytes_read++;
+        if(c != 0x01){ // unsupported segwit version
+            status = PARSING_FAILED;
+            bytes_parsed+=bytes_read;
+            return bytes_read;
+        }
+    }
+    if(s->available() && segwit_flag > 0 && bytes_read+bytes_parsed == 6){
+        inputsNumber = s->read();
+        bytes_read++;
+        txIns = new TxIn[inputsNumber];
+        for(unsigned int i=0; i<inputsNumber; i++){ // this will at least set all txins to PARSING_INCOMPLETE
+            bytes_read += s->parse(&txIns[i]);
+        }
+    }
     for(unsigned int i=0; i<inputsNumber; i++){
-      if(txIns[i].amount == 0){
-        return 0; //can't detect the fee
-      }
-      total += txIns[i].amount;
+        if(s->available() && txIns[i].getStatus() == PARSING_INCOMPLETE){
+            bytes_read += s->parse(&txIns[i]);
+        }
+        if(txIns[i].getStatus() == PARSING_FAILED){
+            status = PARSING_FAILED;
+            bytes_parsed+=bytes_read;
+            return bytes_read;
+        }
+    }
+    size_t current_offset = 5+2*segwit_flag;
+    for(unsigned int i=0; i<inputsNumber; i++){
+        current_offset += txIns[i].length();
+    }
+    if(s->available() && bytes_read+bytes_parsed == current_offset){
+        outputsNumber = s->read();
+        bytes_read++;
+        txOuts = new TxOut[outputsNumber];
+        for(unsigned int i=0; i<outputsNumber; i++){ // this will at least set all txouts to PARSING_INCOMPLETE
+            bytes_read += s->parse(&txOuts[i]);
+        }
     }
     for(unsigned int i=0; i<outputsNumber; i++){
-      total -= txOuts[i].amount;
+        if(s->available() && txOuts[i].getStatus() == PARSING_INCOMPLETE){
+            bytes_read += s->parse(&txOuts[i]);
+        }
+        if(txOuts[i].getStatus() == PARSING_FAILED){
+            status = PARSING_FAILED;
+            bytes_parsed+=bytes_read;
+            return bytes_read;
+        }
     }
-    return total;
+    current_offset++;
+    for(unsigned int i=0; i<outputsNumber; i++){
+        current_offset += txOuts[i].length();
+    }
+    if(segwit_flag > 0 && bytes_read+bytes_parsed == current_offset){
+        for(unsigned int i=0; i<inputsNumber; i++){ // this will at least set all txins witnesses to PARSING_INCOMPLETE
+            bytes_read += s->parse(&txIns[i].witness);
+        }
+    }
+    if(segwit_flag > 0){
+        for(unsigned int i=0; i<inputsNumber; i++){
+            if(s->available() && txIns[i].witness.getStatus() == PARSING_INCOMPLETE){
+                bytes_read += s->parse(&txIns[i].witness);
+            }
+            if(txIns[i].witness.getStatus() == PARSING_FAILED){
+                status = PARSING_FAILED;
+                bytes_parsed+=bytes_read;
+                return bytes_read;
+            }
+        }
+        for(unsigned int i=0; i<inputsNumber; i++){
+            current_offset += txIns[i].witness.length();
+        }
+    }
+    while(s->available() && bytes_parsed+bytes_read < current_offset+4){
+        uint8_t c = s->read();
+        locktime += (c << (8*(bytes_read+bytes_parsed-current_offset)));
+        bytes_read++;
+    }
+    current_offset+= 4;
+    if(bytes_read+bytes_parsed == current_offset){
+        bool completed = true;
+        for(unsigned int i=0; i<inputsNumber; i++){
+            if(txIns[i].getStatus() != PARSING_DONE){
+                completed = false;
+            }
+            if(segwit_flag > 0){
+                if(txIns[i].witness.getStatus() != PARSING_DONE){
+                    completed = false;
+                }
+            }
+        }
+        for(unsigned int i=0; i<outputsNumber; i++){
+            if(txOuts[i].getStatus() != PARSING_DONE){
+                completed = false;
+            }
+        }
+        if(completed){
+            status = PARSING_DONE;
+        }
+    }
+    bytes_parsed+=bytes_read;
+    return bytes_read;
 }
+int Tx::sigHash(uint8_t h[32], uint8_t inputIndex, const Script scriptPubkey, SigHashType sighash) const{
+    Script empty;
+    DoubleSha s;
+    s.begin();
 
-int Tx::id(uint8_t id_arr[32]){
+    uint8_t arr[10];
+
+    intToLittleEndian(version, arr, 4);
+    s.write(arr, 4);
+    size_t l = writeVarInt(inputsNumber, arr, 10);
+    s.write(arr, l);
+    for(size_t i=0; i<inputsNumber; i++){
+        TxIn t = txIns[i];
+        if(i == inputIndex){
+            t.scriptSig = scriptPubkey;
+        }else{
+            t.scriptSig = empty;
+        }
+        s.serialize(&t, 0);
+    }
+    l = writeVarInt(outputsNumber, arr, 10);
+    s.write(arr, l);
+    for(size_t i=0; i<outputsNumber; i++){
+        s.serialize(&txOuts[i], 0);
+    }
+    intToLittleEndian(locktime, arr, 4);
+    s.write(arr, 4);
+    intToLittleEndian(sighash, arr, 4);
+    s.write(arr, 4);
+    s.end(h);
+    return 32;
+}
+int Tx::hash(uint8_t * h) const{
+    DoubleSha s;
+    s.begin();
+
+    uint8_t arr[10];
+
+    intToLittleEndian(version, arr, 4);
+    s.write(arr, 4);
+    size_t l = writeVarInt(inputsNumber, arr, 10);
+    s.write(arr, l);
+    for(unsigned int i=0; i<inputsNumber; i++){
+        s.serialize(&txIns[i], 0);
+    }
+    l = writeVarInt(outputsNumber, arr, 10);
+    s.write(arr, l);
+    for(unsigned int i=0; i<outputsNumber; i++){
+        s.serialize(&txOuts[i], 0);
+    }
+    intToLittleEndian(locktime, arr, 4);
+    s.write(arr, 4);
+    s.end(h);
+    return 32;
+}
+int Tx::whash(uint8_t * h) const{
+    DoubleSha s;
+    s.begin();
+
+    uint8_t arr[10];
+
+    intToLittleEndian(version, arr, 4);
+    s.write(arr, 4);
+    arr[0] = 0; // marker
+    arr[1] = 1; // flag
+    s.write(arr, 2);
+    size_t l = writeVarInt(inputsNumber, arr, 10);
+    s.write(arr, l);
+    for(unsigned int i=0; i<inputsNumber; i++){
+        s.serialize(&txIns[i], 0);
+    }
+    l = writeVarInt(outputsNumber, arr, 10);
+    s.write(arr, l);
+    for(unsigned int i=0; i<outputsNumber; i++){
+        s.serialize(&txOuts[i], 0);
+    }
+    for(unsigned int i=0; i<inputsNumber; i++){
+        s.serialize(&txIns[i].witness, 0);
+    }
+    intToLittleEndian(locktime, arr, 4);
+    s.write(arr, 4);
+    s.end(h);
+    return 32;
+}
+int Tx::txid(uint8_t * id_arr) const{
     uint8_t h[32];
     hash(h);
-    for(int i=0; i<32; i++){ // flip
+    for(uint8_t i=0;i<32;i++){
         id_arr[i] = h[31-i];
     }
-    return 0;
+    return 32;
 }
+int Tx::wtxid(uint8_t * id_arr) const{
+    uint8_t h[32];
+    whash(h);
+    for(uint8_t i=0;i<32;i++){
+        id_arr[i] = h[31-i];
+    }
+    return 32;
+}
+
 #if USE_ARDUINO_STRING
-String Tx::id(){
-    uint8_t id_arr[32];
-    id(id_arr);
-    return toHex(id_arr, 32);
+String Tx::txid() const{
+    uint8_t id[32];
+    txid(id);
+    return toHex(id, 32);
+}
+String Tx::wtxid() const{
+    uint8_t id[32];
+    wtxid(id);
+    return toHex(id, 32);
 }
 #endif
 
-int Tx::sigHash(uint8_t inputIndex, Script scriptPubKey, uint8_t hash[32]){
-    Script empty;
-    ByteStream s;
+#if USE_STD_STRING
+std::string Tx::txid() const{
+    uint8_t id[32];
+    txid(id);
+    return toHex(id, 32);
+}
+std::string Tx::wtxid() const{
+    uint8_t id[32];
+    wtxid(id);
+    return toHex(id, 32);
+}
+#endif
 
-    uint8_t arr[4];
-    intToLittleEndian(version, arr, 4);
-    s.write(arr, 4);
-    writeVarInt(inputsNumber, s);
-    for(size_t i=0; i<inputsNumber; i++){
-        if(i != inputIndex){
-            txIns[i].serialize(s, empty);
-        }else{
-            txIns[i].serialize(s, scriptPubKey);
-        }
+uint8_t Tx::addInput(const TxIn txIn){
+    TxIn * arr = new TxIn[inputsNumber+1];
+    for(unsigned int i=0; i<inputsNumber; i++){
+        arr[i] = txIns[i];
     }
-    writeVarInt(outputsNumber, s);
-    for(size_t i=0; i<outputsNumber; i++){
-        txOuts[i].serialize(s);
+    arr[inputsNumber] = txIn;
+    if(inputsNumber > 0){
+        delete [] txIns;
     }
-    intToLittleEndian(locktime, arr, 4);
-    s.write(arr, 4);
-    uint8_t sighash[] = {1,0,0,0}; // SIGHASH_ALL
-    s.write(sighash, sizeof(sighash));
-
-    size_t len = s.available();
-    uint8_t * buf;
-    buf = (uint8_t *) calloc( len, sizeof(uint8_t));
-    s.readBytes(buf, len);
-    doubleSha(buf, len, hash);
-    free(buf);
-    return 0;
+    txIns = arr;
+    inputsNumber++;
+    return inputsNumber;
+}
+uint8_t Tx::addOutput(const TxOut txOut){
+    TxOut * arr = new TxOut[outputsNumber+1];
+    for(unsigned int i=0; i<outputsNumber; i++){
+        arr[i] = txOuts[i];
+    }
+    arr[outputsNumber] = txOut;
+    if(outputsNumber > 0){
+        delete [] txOuts;
+    }
+    txOuts = arr;
+    outputsNumber++;
+    return outputsNumber;
 }
 
-int Tx::hashPrevouts(uint8_t hash[32]){
-    ByteStream s;
+int Tx::hashPrevouts(uint8_t h[32]) const{
+    DoubleSha s;
+    s.begin();
     for(size_t i=0; i<inputsNumber; i++){
         s.write(txIns[i].hash, 32);
         uint8_t arr[4];
         intToLittleEndian(txIns[i].outputIndex, arr, 4);
         s.write(arr, 4);
     }
-    size_t len = s.available();
-    uint8_t * buf;
-    buf = (uint8_t *) calloc( len, sizeof(uint8_t));
-    s.readBytes(buf, len);
-    doubleSha(buf, len, hash);
-    free(buf);
-    return 0;
+    s.end(h);
+    return 32;
 }
 
-int Tx::hashSequence(uint8_t hash[32]){
-    ByteStream s;
+int Tx::hashSequence(uint8_t h[32]) const{
+    DoubleSha s;
+    s.begin();
     for(size_t i=0; i<inputsNumber; i++){
         uint8_t arr[4];
         intToLittleEndian(txIns[i].sequence, arr, 4);
         s.write(arr, 4);
     }
-    size_t len = s.available();
-    uint8_t * buf;
-    buf = (uint8_t *) calloc( len, sizeof(uint8_t));
-    s.readBytes(buf, len);
-    doubleSha(buf, len, hash);
-    free(buf);
-    return 0;
+    s.end(h);
+    return 32;
 }
 
-int Tx::hashOutputs(uint8_t hash[32]){
-    ByteStream s;
+int Tx::hashOutputs(uint8_t h[32]) const{
+    DoubleSha s;
+    s.begin();
     for(size_t i=0; i<outputsNumber; i++){
-        txOuts[i].serialize(s);
+        s.serialize(&txOuts[i], 0);
     }
-    size_t len = s.available();
-    uint8_t * buf;
-    buf = (uint8_t *) calloc( len, sizeof(uint8_t));
-    s.readBytes(buf, len);
-    doubleSha(buf, len, hash);
-    free(buf);
-    return 0;
+    s.end(h);
+    return 32;
 }
 
-int Tx::sigHashSegwit(uint8_t inputIndex, Script scriptPubKey, uint8_t hash[32]){
-    ByteStream s;
+int Tx::sigHashSegwit(uint8_t h[32], uint8_t inputIndex, const Script scriptPubKey, uint64_t amount, SigHashType sighash) const{
+    DoubleSha s;
+    s.begin();
     uint8_t arr[8];
     intToLittleEndian(version, arr, 4);
     s.write(arr, 4);
 
-    uint8_t h[32];
     hashPrevouts(h);
     s.write(h, 32);
+
     hashSequence(h);
     s.write(h, 32);
 
     s.write(txIns[inputIndex].hash, 32);
     intToLittleEndian(txIns[inputIndex].outputIndex, arr, 4);
     s.write(arr, 4);
-    scriptPubKey.serialize(s);
+    s.serialize(&scriptPubKey, 0);
 
-    intToLittleEndian(txIns[inputIndex].amount, arr, 8);
+    intToLittleEndian(amount, arr, 8);
     s.write(arr, 8);
     intToLittleEndian(txIns[inputIndex].sequence, arr, 4);
     s.write(arr, 4);
@@ -806,104 +660,67 @@ int Tx::sigHashSegwit(uint8_t inputIndex, Script scriptPubKey, uint8_t hash[32])
 
     intToLittleEndian(locktime, arr, 4);
     s.write(arr, 4);
-    uint8_t sighash[] = {1,0,0,0}; // SIGHASH_ALL
-    s.write(sighash, sizeof(sighash));
+    intToLittleEndian(sighash, arr, 4);
+    s.write(arr, 4);
 
-    size_t len = s.available();
-    uint8_t * buf;
-    buf = (uint8_t *) calloc( len, sizeof(uint8_t));
-    s.readBytes(buf, len);
-    doubleSha(buf, len, hash);
-    free(buf);
-    return 0;
+    s.end(h);
+    return 32;
 }
 
-Signature Tx::signInput(uint8_t inputIndex, PrivateKey pk, Script redeemScript){
+Signature Tx::signInput(uint8_t inputIndex, const PrivateKey pk, const Script redeemScript, SigHashType sighash){
     uint8_t h[32];
-    int type = redeemScript.type();
-    bool is_segwit = (isSegwit()) || (type == P2WPKH) || (type == P2WSH);
-    if(is_segwit){
-        if((type == P2WPKH) || (type == P2WSH)){
-            Script script_pubkey(pk.publicKey()); // TODO: make it based on redeemScript
-            sigHashSegwit(inputIndex, script_pubkey, h);
-        }else{
-            sigHashSegwit(inputIndex, redeemScript, h);
-        }
-    }else{
-        sigHash(inputIndex, redeemScript, h);
-    }
+    sigHash(h, inputIndex, redeemScript, sighash);
+
     PublicKey pubkey = pk.publicKey();
     Signature sig = pk.sign(h);
-    uint8_t der[80] = { 0 };
-    size_t derLen = sig.der(der, sizeof(der));
-    der[derLen] = 1;
-    derLen++;
 
-    uint8_t sec[65] = { 0 };
-    size_t secLen = pubkey.sec(sec, sizeof(sec));
-
-    if(is_segwit){
-        if((type == P2WPKH) || (type == P2WSH)){
-            Script script_sig;
-            script_sig.push(redeemScript);
-            txIns[inputIndex].scriptSig = script_sig;
-        }else{
-            Script empty;
-            txIns[inputIndex].scriptSig = empty;
-        }
-
-        uint8_t lenArr[3] = { secLen + derLen + 3, 2, derLen };
-        ByteStream s;
-        s.write(lenArr, 3);
-        s.write(der, derLen);
-        s.write(secLen);
-        s.write(sec, secLen);
-        Script sc;
-        sc.parse(s);
-        txIns[inputIndex].witnessProgram = sc;
-    }else{
-        uint8_t lenArr[2] = { secLen + derLen + 2, derLen };
-        ByteStream s;
-        s.write(lenArr, 2);
-        s.write(der, derLen);
-        s.write(secLen);
-        s.write(sec, secLen);
-        Script sc;
-        sc.parse(s);
-        txIns[inputIndex].scriptSig = sc;
+    Script sc;
+    sc.push(sig);
+    sc.push(pubkey);
+    // push script itself for timelocks and other single-key things if P2SH
+    if(redeemScript.type() != P2PKH){
+        sc.push(redeemScript);
     }
+
+    txIns[inputIndex].scriptSig = sc;
+
     return sig;
 }
+Signature Tx::signSegwitInput(uint8_t inputIndex, const PrivateKey pk, const Script redeemScript, uint64_t amount, ScriptType type, SigHashType sighash){
+    uint8_t h[32];
 
-Signature Tx::signInput(uint8_t inputIndex, PrivateKey pk){
-    PublicKey pubkey = pk.publicKey();
-    return signInput(inputIndex, pk, pubkey.script());
-}
-
-Signature Tx::signInput(uint8_t inputIndex, HDPrivateKey account){
-    PrivateKey pk = account.child(txIns[inputIndex].derivation[0]).child(txIns[inputIndex].derivation[1]).privateKey;
-    if(account.type == P2SH_P2WPKH){
-        Script redeemScript(pk.publicKey(), P2WPKH);
-        return signInput(inputIndex, pk, redeemScript);
+    ScriptType redeem_type = redeemScript.type();
+    if(redeem_type == P2WPKH){
+        Script sc(pk.publicKey(), P2PKH);
+        sigHashSegwit(h, inputIndex, sc, amount, sighash);
     }else{
-        return signInput(inputIndex, pk);
+        sigHashSegwit(h, inputIndex, redeemScript, amount, sighash);
     }
-}
 
-void Tx::sign(HDPrivateKey account){
-    for(unsigned int i=0; i<inputsNumber; i++){
-        signInput(i, account);
+    PublicKey pubkey = pk.publicKey();
+    Signature sig = pk.sign(h);
+
+    if((type == P2SH_P2WPKH) || (type == P2SH_P2WSH)){
+        Script script_sig;
+        if(redeem_type == P2WPKH){
+            script_sig.push(redeemScript);
+        }else{
+            Script sc(redeemScript, P2WSH);
+            script_sig.push(sc);
+        }
+        txIns[inputIndex].scriptSig = script_sig;
+    }else{
+        Script empty;
+        txIns[inputIndex].scriptSig = empty;
     }
-}
 
-#if USE_ARDUINO_STRING
-Tx::operator String(){
-    size_t len = length();
-    uint8_t * ser;
-    ser = (uint8_t *)calloc(len, sizeof(uint8_t));
-    serialize(ser, len, isSegwit());
-    String s = toHex(ser, len);
-    free(ser);
-    return s;
-};
-#endif
+    Witness w;
+    w.push(sig);
+    w.push(pubkey);
+    if(redeem_type != P2WPKH){
+        w.push(redeemScript);
+    }
+    txIns[inputIndex].witness = w;
+
+    return sig;
+}

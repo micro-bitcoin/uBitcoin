@@ -28,27 +28,22 @@ size_t toHex(const uint8_t * array, size_t arraySize, char * output, size_t outp
     }
     return 2*arraySize;
 }
-size_t toHex(const uint8_t * array, size_t arraySize, ByteStream * s){
-    // uint8_t * array = (uint8_t *) arr;
-    char b[3] = "";
-    for(size_t i=0; i < arraySize; i++){
-        uint8_t v = array[i];
-        char c = (v >> 4) + '0';
-        if(c > '9'){
-            c += 'a'-'9'-1;
-        }
-        b[0] = c;
-        c = (v & 0x0F) + '0';
-        if(c > '9'){
-            c += 'a'-'9'-1;
-        }
-        b[1] = c;
-        // sprintf(b, "%0x", array[i]);
-        s->write((uint8_t * )b, 2);
-    }
-    return 2*arraySize;
-}
+#if USE_STD_STRING
+std::string toHex(const uint8_t * array, size_t arraySize){
+    char * output;
+    size_t outputSize = arraySize * 2 + 1;
+    output = (char *) malloc(outputSize);
 
+    toHex(array, arraySize, output, outputSize);
+
+    std::string result(output);
+
+    memset(output, 0, outputSize);
+    free(output);
+
+    return result;
+}
+#endif
 #if USE_ARDUINO_STRING
 String toHex(const uint8_t * array, size_t arraySize){
     char * output;
@@ -563,17 +558,6 @@ uint64_t readVarInt(const uint8_t * array, size_t arraySize){
         return littleEndianToInt(array + 1, len);
     }
 }
-uint64_t readVarInt(ByteStream &s){
-    uint8_t first = s.read();
-    if(first < 0xfd){
-        return first;
-    }else{
-        uint8_t len = (1 << (first - 0xfc));
-        uint8_t array[8] = { 0 };
-        s.readBytes(array, len);
-        return littleEndianToInt(array, len);
-    }
-}
 
 // TODO: don't repeat yourself!
 size_t writeVarInt(uint64_t num, uint8_t * array, size_t arraySize){
@@ -597,85 +581,3 @@ size_t writeVarInt(uint64_t num, uint8_t * array, size_t arraySize){
     return len;
 }
 
-size_t writeVarInt(uint64_t num, ByteStream &s){
-    uint8_t len = lenVarInt(num);
-    if(len == 1){
-        s.write((uint8_t)(num & 0xFF));
-    }else{
-        switch(len){
-            case 3: s.write(0xfd);
-                    break;
-            case 5: s.write(0xfe);
-                    break;
-            case 9: s.write(0xff);
-                    break;
-        }
-        uint8_t array[8] = { 0 };
-        intToLittleEndian(num, array, len-1);
-        s.write(array, len-1);
-    }
-    return len;
-}
-
-/* Stream conversion */
-ByteStream::ByteStream(){
-    len = 0;
-    cursor = 0;
-    buf = NULL;
-}
-ByteStream::ByteStream(const uint8_t * buffer, size_t length){
-    len = length;
-    buf = (uint8_t *) calloc( length, sizeof(uint8_t));
-    memcpy(buf, buffer, length);
-}
-ByteStream::~ByteStream(void){
-    if(len > 0){
-        free(buf);
-    }
-}
-size_t ByteStream::available(){
-    if(cursor >= len){
-        return 0;
-    }
-    return len-cursor;
-}
-void ByteStream::flush(){
-    return;
-}
-int ByteStream::peek(){
-    if(available()){
-        uint8_t c =  buf[cursor];
-        return c;
-    }else{
-        return -1;
-    }
-}
-int ByteStream::read(){
-    if(available() > 0){
-        uint8_t c =  buf[cursor];
-        cursor++;
-        return c;
-    }else{
-        return -1;
-    }
-}
-size_t ByteStream::readBytes(uint8_t * buffer, size_t length){
-    if(available() < length){
-        length = available();
-    }
-    memcpy(buffer, buf+cursor, length);
-    cursor += length;
-    return length;
-}
-size_t ByteStream::write(uint8_t b){
-    buf = ( uint8_t * )realloc( buf, len + 1 );
-    buf[len] = b;
-    len ++;
-    return 1;
-}
-size_t ByteStream::write(uint8_t * arr, size_t length){
-    buf = ( uint8_t * )realloc( buf, len + length );
-    memcpy(buf + len, arr, length);
-    len += length;
-    return length;
-}

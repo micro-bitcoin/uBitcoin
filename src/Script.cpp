@@ -6,32 +6,40 @@
 
 #define MAX_SCRIPT_SIZE 10000
 
+//------------------------------------------------------------ Script
 Script::Script(void){
+    reset();
     scriptLen = 0;
     scriptArray = NULL;
 }
 Script::Script(const uint8_t * buffer, size_t len){
-    if(len > MAX_SCRIPT_SIZE){
-        return;
-    }
-    scriptLen = len;
-    scriptArray = (uint8_t *) calloc( scriptLen, sizeof(uint8_t));
-    memcpy(scriptArray, buffer, scriptLen);
+    reset();
+    push(buffer, len);
 }
 Script::Script(const char * address){
+    reset();
+    scriptLen = 0;
+    scriptArray = NULL;
     uint8_t addr[21];
     size_t len = strlen(address);
     if(len > 100){ // very wrong address
         return;
     }
+    ScriptType type = UNKNOWN_TYPE;
+    const Network * network;
+    for(int i=0; i<networks_len; i++){
+        if(memcmp(address, networks[i]->bech32, strlen(networks[i]->bech32))==0){
+            type = P2WPKH;
+            network = networks[i];
+            break;
+        }
+    }
     // segwit
-    if((memcmp(address,"bc", 2) == 0) || (memcmp(address,"tb", 2) == 0)){
+    if(type == P2WPKH){
         int ver = 0;
         uint8_t prog[32];
         size_t prog_len = 0;
-        char hrp[] = "bc";
-        memcpy(hrp, address, 2);
-        int r = segwit_addr_decode(&ver, prog, &prog_len,hrp, address);
+        int r = segwit_addr_decode(&ver, prog, &prog_len, network->bech32, address);
         if(r != 1){ // decoding failed
             return;
         }
@@ -45,7 +53,19 @@ Script::Script(const char * address){
         if(l != 21){ // either wrong checksum or wierd address
             return;
         }
-        if((addr[0] == BITCOIN_MAINNET_P2PKH) || (addr[0] == BITCOIN_TESTNET_P2PKH)){
+        for(int i=0; i<networks_len; i++){
+            if(addr[0]==networks[i]->p2pkh){
+                type = P2PKH;
+                network = networks[i];
+                break;
+            }
+            if(addr[0]==networks[i]->p2sh){
+                type = P2SH;
+                network = networks[i];
+                break;
+            }
+        }
+        if(type == P2PKH){
             scriptLen = 25;
             scriptArray = (uint8_t *) calloc( scriptLen, sizeof(uint8_t));
             scriptArray[0] = OP_DUP;
@@ -55,7 +75,7 @@ Script::Script(const char * address){
             scriptArray[23] = OP_EQUALVERIFY;
             scriptArray[24] = OP_CHECKSIG;
         }
-        if((addr[0] == BITCOIN_MAINNET_P2SH) || (addr[0] == BITCOIN_TESTNET_P2SH)){
+        if(type == P2SH){
             scriptLen = 23;
             scriptArray = (uint8_t *) calloc( scriptLen, sizeof(uint8_t));
             scriptArray[0] = OP_HASH160;
@@ -65,17 +85,8 @@ Script::Script(const char * address){
         }
     }
 }
-#if USE_ARDUINO_STRING
-Script::Script(const String address){
-    size_t len = address.length()+1; // +1 for null terminator
-    char * buf = (char *)calloc(len, sizeof(uint8_t));
-    address.toCharArray(buf, len);
-    Script sc(buf);
-    free(buf);
-    *this = sc;
-}
-#endif
-Script::Script(const PublicKey pubkey, int type){
+Script::Script(const PublicKey pubkey, ScriptType type){
+    reset();
     if(type == P2PKH){
         scriptLen = 25;
         scriptArray = (uint8_t *) calloc( scriptLen, sizeof(uint8_t));
@@ -98,17 +109,23 @@ Script::Script(const PublicKey pubkey, int type){
         hash160(sec_arr, l, scriptArray+2);
     }
 }
-Script::Script(const Script &other){
-    scriptLen = 0;
-    scriptArray = NULL;
-    if(other.scriptLen > 0){
-        scriptLen = other.scriptLen;
-        scriptArray = (uint8_t *) calloc( scriptLen, sizeof(uint8_t));
-        memcpy(scriptArray, other.scriptArray, scriptLen);
+Script::Script(const Script &other, ScriptType type){
+    reset();
+    if(type == P2SH){
+        scriptLen = 23;
+        scriptArray = (uint8_t *) calloc(scriptLen, sizeof(uint8_t));
+        hash160(other.scriptArray, other.scriptLen, scriptArray+2);
+        scriptArray[0] = OP_HASH160;
+        scriptArray[1] = 20;
+        scriptArray[scriptLen-1] = OP_EQUAL;
     }
-}
-Script::~Script(void){
-    clear();
+    if(type == P2WSH){
+        scriptLen = 34;
+        scriptArray = (uint8_t *) calloc(scriptLen, sizeof(uint8_t));
+        sha256(other.scriptArray, other.scriptLen, scriptArray+2);
+        scriptArray[0] = 0x00;
+        scriptArray[1] = 32;
+    }
 }
 void Script::clear(){
     if(scriptLen > 0){
@@ -116,51 +133,73 @@ void Script::clear(){
         scriptLen = 0;
     }
 }
-size_t Script::parse(ByteStream &s){
-    clear();
-    int l = s.peek();
-    if(l < 0){
+size_t Script::from_stream(ParseStream *s){
+    if(status == PARSING_FAILED){
         return 0;
     }
-    scriptLen = readVarInt(s);
-    size_t len = lenVarInt(scriptLen);
-
-    if(l > MAX_SCRIPT_SIZE){
-        return 0;
+    if(status == PARSING_DONE){
+        bytes_parsed = 0;
+        clear();
     }
-    scriptArray = (uint8_t *) calloc( scriptLen, sizeof(uint8_t));
-    len += s.readBytes(scriptArray, scriptLen);
-    return len;
+    status = PARSING_INCOMPLETE;
+    size_t bytes_read = 0;
+    // reading scriptLen varint
+    if(s->available() && bytes_parsed == 0){ 
+        lenLen = s->read();
+        bytes_read++;
+        if(lenLen < 0xfd){
+            scriptLen = lenLen;
+            if(scriptLen > 0){
+                scriptArray = (uint8_t *) calloc( scriptLen, sizeof(uint8_t));
+            }
+            lenLen = 1;
+        }else{
+            scriptLen = 0;
+            lenLen = 1+(1 << (lenLen - 0xfc));
+            scriptArray = (uint8_t *) calloc( 255, sizeof(uint8_t));
+        }
+    }
+    while(s->available() > 0 && bytes_parsed+bytes_read < lenLen){
+        scriptLen += (s->read() << (8*(bytes_parsed+bytes_read-1)));
+        bytes_read++;
+    }
+    if(bytes_parsed+bytes_read == lenLen && scriptLen > 0){
+        free(scriptArray);
+        scriptArray = (uint8_t *) calloc( scriptLen, sizeof(uint8_t));
+    }
+    if(bytes_parsed+bytes_read == lenLen && lenVarInt(scriptLen) != lenLen){
+        status = PARSING_FAILED;
+        bytes_parsed+=bytes_read;
+        return bytes_read;
+    }
+    // reading the script
+    while(s->available() > 0 && bytes_parsed+bytes_read < scriptLen+lenLen){
+        scriptArray[bytes_parsed+bytes_read-lenLen] = s->read();
+        bytes_read++;
+    }
+    if(bytes_parsed+bytes_read == scriptLen+lenLen){
+        status = PARSING_DONE;
+    }
+    bytes_parsed += bytes_read;
+    return bytes_read;
 }
-size_t Script::parse(const uint8_t * buffer){
-    size_t l = readVarInt(buffer, 9); // max varint len is 9
-    if(l > MAX_SCRIPT_SIZE){
-        return 0;
+size_t Script::to_stream(SerializeStream *s, size_t offset) const{
+    size_t bytes_written = 0;
+    // varint
+    uint8_t l = lenVarInt(scriptLen);
+    uint8_t arr[10];
+    writeVarInt(scriptLen, arr, sizeof(arr));
+    while(s->available() && bytes_written+offset < l){
+        s->write(arr[offset+bytes_written]);
+        bytes_written++;
     }
-    scriptLen = l;
-    scriptArray = (uint8_t *) calloc( scriptLen, sizeof(uint8_t));
-    memcpy(scriptArray, buffer + lenVarInt(l), scriptLen);
-    return l + lenVarInt(l);
-}
-size_t Script::parse(const uint8_t * buffer, size_t len){
-    clear();
-    size_t l = readVarInt(buffer, len);
-    if((len < l + lenVarInt(l)) || (l > MAX_SCRIPT_SIZE)){
-        return 0;
+    while(s->available() && bytes_written+offset < l+scriptLen){
+        s->write(scriptArray[bytes_written+offset-l]);
+        bytes_written++;
     }
-    scriptLen = l;
-    scriptArray = (uint8_t *) calloc( scriptLen, sizeof(uint8_t));
-    memcpy(scriptArray, buffer + lenVarInt(l), scriptLen);
-    return l + lenVarInt(l);
+    return bytes_written;
 }
-// size_t Script::parseHex(const char * hex){
-// }
-// size_t Script::parseHex(const String hex){
-// }
-// size_t Script::parseHex(Stream &s){
-// }
-
-int Script::type() const{
+ScriptType Script::type() const{
     if(
         (scriptLen == 25) &&
         (scriptArray[0] == OP_DUP) &&
@@ -193,17 +232,13 @@ int Script::type() const{
     ){
         return P2WSH;
     }
-    return 0;
+    return UNKNOWN_TYPE;
 }
-size_t Script::address(char * buffer, size_t len, bool testnet) const{
-    memset(buffer, len, 0);
+size_t Script::address(char * buffer, size_t len, const Network * network) const{
+    memset(buffer, 0, len);
     if(type() == P2PKH){
         uint8_t addr[21];
-        if(testnet){
-            addr[0] = BITCOIN_TESTNET_P2PKH;
-        }else{
-            addr[0] = BITCOIN_MAINNET_P2PKH;
-        }
+        addr[0] = network->p2pkh;
         memcpy(addr+1, scriptArray + 3, 20);
         char address[40] = { 0 };
         toBase58Check(addr, 21, address, sizeof(address));
@@ -216,11 +251,7 @@ size_t Script::address(char * buffer, size_t len, bool testnet) const{
     }
     if(type() == P2SH){
         uint8_t addr[21];
-        if(testnet){
-            addr[0] = BITCOIN_TESTNET_P2SH;
-        }else{
-            addr[0] = BITCOIN_MAINNET_P2SH;
-        }
+        addr[0] = network->p2sh;
         memcpy(addr+1, scriptArray + 2, 20);
         char address[40] = { 0 };
         toBase58Check(addr, 21, address, sizeof(address));
@@ -233,11 +264,7 @@ size_t Script::address(char * buffer, size_t len, bool testnet) const{
     }
     if(type() == P2WPKH || type() == P2WSH){
         char address[76] = { 0 };
-        char prefix[] = "bc";
-        if(testnet){
-            memcpy(prefix, "tb", 2);
-        }
-        segwit_addr_encode(address, prefix, scriptArray[0], scriptArray+2, scriptArray[1]);
+        segwit_addr_encode(address, network->bech32, scriptArray[0], scriptArray+2, scriptArray[1]);
         size_t l = strlen(address);
         if(l > len){
             return 0;
@@ -248,9 +275,9 @@ size_t Script::address(char * buffer, size_t len, bool testnet) const{
     return 0;
 }
 #if USE_ARDUINO_STRING
-String Script::address(bool testnet) const{
+String Script::address(const Network * network) const{
     char buffer[100] = { 0 };
-    size_t l = address(buffer, sizeof(buffer), testnet);
+    size_t l = address(buffer, sizeof(buffer), network);
     if(l == 0){
         return String("");
     }
@@ -258,9 +285,9 @@ String Script::address(bool testnet) const{
 }
 #endif
 #if USE_STD_STRING
-std::string Script::address(bool testnet) const{
+std::string Script::address(const Network * network) const{
     char buffer[100] = { 0 };
-    size_t l = address(buffer, sizeof(buffer), testnet);
+    size_t l = address(buffer, sizeof(buffer), network);
     if(l == 0){
         return string("");
     }
@@ -269,34 +296,6 @@ std::string Script::address(bool testnet) const{
 #endif
 size_t Script::length() const{
     return scriptLen + lenVarInt(scriptLen);
-}
-size_t Script::scriptLength() const{
-    return scriptLen;
-}
-size_t Script::serialize(ByteStream &s) const{
-    writeVarInt(scriptLen, s);
-    s.write(scriptArray, scriptLen);
-    return length();
-}
-size_t Script::serialize(uint8_t array[], size_t len) const{
-    if(len < length()){
-        return 0;
-    }
-    size_t l = lenVarInt(scriptLen);
-    writeVarInt(scriptLen, array, len);
-    memcpy(array+l, scriptArray, scriptLen);
-    return length();
-}
-size_t Script::serializeScript(ByteStream &s) const{
-    s.write(scriptArray, scriptLen);
-    return scriptLength();
-}
-size_t Script::serializeScript(uint8_t array[], size_t len) const{
-    if(len < scriptLength()){
-        return 0;
-    }
-    memcpy(array, scriptArray, scriptLen);
-    return scriptLength();
 }
 size_t Script::push(uint8_t code){
     if(scriptLen+1 > MAX_SCRIPT_SIZE){
@@ -334,13 +333,12 @@ size_t Script::push(const PublicKey pubkey){
     push(sec, len);
     return scriptLen;
 }
-size_t Script::push(const Signature sig){//, uint8_t sigType){
+size_t Script::push(const Signature sig, SigHashType sigType){
     uint8_t der[75];
     uint8_t len = sig.der(der, sizeof(der));
     push(len+1);
     push(der, len);
-    // push(sigType);
-    push(SIGHASH_ALL);
+    push(sigType);
     return scriptLen;
 }
 size_t Script::push(const Script sc){
@@ -351,42 +349,226 @@ size_t Script::push(const Script sc){
     push(tmp, len);
     return scriptLen;
 }
-
-Script Script::scriptPubkey() const{
-    Script sc;
-    uint8_t h[20];
-    hash160(scriptArray, scriptLen, h);
-    sc.push(OP_HASH160);
-    sc.push(20);
-    sc.push(h, 20);
-    sc.push(OP_EQUAL);
+Script Script::scriptPubkey(ScriptType type) const{
+    Script sc(*this, type);
     return sc;
 }
-
-#if USE_ARDUINO_STRING
-size_t Script::printTo(Print& p) const{
-    // p.print("Print!");
-    if(scriptLen>0){
-        return toHex(scriptArray, scriptLen, p);
-    }else{
-        return 0;
-    }
-}
-Script::operator String(){
-    if(scriptLen>0){
-        return toHex(scriptArray, scriptLen);
-    }else{
-        return "";
-    }
-};
-#endif
-
-Script &Script::operator=(Script const &other){
+Script &Script::operator=(const Script &other){
+    reset();
     clear();
     if(other.scriptLen > 0){
         scriptLen = other.scriptLen;
         scriptArray = (uint8_t *) calloc( scriptLen, sizeof(uint8_t));
         memcpy(scriptArray, other.scriptArray, scriptLen);
+    }
+    return *this;
+};
+Script::Script(const Script &other):Script(){
+    if(other.scriptLen > 0){
+        scriptLen = other.scriptLen;
+        scriptArray = (uint8_t *) calloc( scriptLen, sizeof(uint8_t));
+        memcpy(scriptArray, other.scriptArray, scriptLen);
+    }
+};
+
+//------------------------------------------------------------ Witness
+
+void Witness::clear(){
+    numElements = 0;
+    if(witnessLen > 0){
+        free(witnessArray);
+        witnessLen = 0;
+    }
+}
+Witness::Witness(void){
+    numElements = 0;
+    witnessLen = 0;
+    reset();
+    clear();
+}
+Witness::Witness(const uint8_t * buffer, size_t len){
+    numElements = 0;
+    witnessLen = 0;
+    reset();
+    clear();
+    ParseByteStream s(buffer, len);
+    Witness::from_stream(&s);
+}
+Witness::Witness(const Signature sig, const PublicKey pubkey){
+    numElements = 0;
+    witnessLen = 0;
+    reset();
+    clear();
+    push(sig);
+    push(pubkey);
+}
+size_t Witness::from_stream(ParseStream *s){
+    if(status == PARSING_FAILED){
+        return 0;
+    }
+    if(status == PARSING_DONE){
+        bytes_parsed = 0;
+        cur_element = 0;
+        curLen = 0;
+        cur_element_len = 0;
+        cur_bytes_parsed = 0;
+        reset();
+        clear();
+    }
+    status = PARSING_INCOMPLETE;
+    size_t bytes_read = 0;
+    // reading elements len varint
+    if(s->available() && bytes_parsed == 0){ 
+        lenLen = s->read();
+        bytes_read++;
+        if(lenLen < 0xfd){
+            numElements = lenLen;
+            lenLen = 1;
+        }else{
+            numElements = 0;
+            status = PARSING_FAILED;
+            bytes_parsed += bytes_read;
+            return bytes_read;
+        }
+    }
+    if(bytes_parsed+bytes_read == lenLen && lenVarInt(numElements) != lenLen){
+        status = PARSING_FAILED;
+        bytes_parsed+=bytes_read;
+        return bytes_read;
+    }
+    // reading elements
+    while(s->available() && cur_element<numElements){
+        // beginning of the element
+        size_t offset = bytes_parsed+bytes_read-lenVarInt(numElements)-cur_bytes_parsed;
+        size_t cur_bytes_read = 0;
+        // reading scriptLen varint
+        if(s->available() && cur_bytes_parsed == 0){ 
+            curLen = s->read();
+            cur_bytes_read++;
+            if(curLen < 0xfd){
+                cur_element_len = curLen;
+                curLen = 1;
+            }else{
+                cur_element_len = 0;
+                curLen = 1+(1 << (curLen - 0xfc));
+            }
+        }
+        while(s->available() && cur_bytes_parsed+cur_bytes_read < curLen){
+            cur_element_len += (s->read() << (8*(cur_bytes_parsed+cur_bytes_read-1)));
+            cur_bytes_read++;
+        }
+        if(lenVarInt(cur_element_len) != curLen && cur_bytes_parsed+cur_bytes_read == curLen){
+            status = PARSING_FAILED;
+            cur_bytes_parsed+=cur_bytes_read;
+            bytes_read+=cur_bytes_read;
+            bytes_parsed+=bytes_read;
+            return bytes_read;
+        }
+        if(cur_bytes_parsed+cur_bytes_read == curLen && cur_bytes_read>0){
+            if(witnessLen==0){
+                witnessLen = cur_element_len+lenVarInt(cur_element_len);
+                witnessArray = (uint8_t *)calloc(witnessLen, sizeof(uint8_t));
+                writeVarInt(cur_element_len, witnessArray, lenVarInt(cur_element_len));
+            }else{
+                witnessArray = (uint8_t *)realloc( witnessArray, (witnessLen + cur_element_len + lenVarInt(cur_element_len)) * sizeof(uint8_t));
+                witnessLen += cur_element_len+lenVarInt(cur_element_len);
+                writeVarInt(cur_element_len, witnessArray+offset, lenVarInt(cur_element_len));
+            }
+        }
+        while(s->available() > 0 && cur_bytes_parsed+cur_bytes_read < cur_element_len+lenVarInt(cur_element_len)){
+            witnessArray[offset+cur_bytes_parsed+cur_bytes_read] = s->read();
+            // s->read();
+            cur_bytes_read++;
+        }
+        if(cur_bytes_parsed+cur_bytes_read==cur_element_len+lenVarInt(cur_element_len)){
+            curLen = 0;
+            cur_element_len = 0;
+            cur_element++;
+            cur_bytes_parsed=0;
+        }else{
+            cur_bytes_parsed += cur_bytes_read;
+        }
+        bytes_read += cur_bytes_read;
+    }
+    if(cur_element==numElements){
+        status = PARSING_DONE;
+    }
+    bytes_parsed += bytes_read;
+    return bytes_read;
+}
+size_t Witness::to_stream(SerializeStream *s, size_t offset) const{
+    size_t bytes_written = 0;
+    // varint
+    uint8_t l = lenVarInt(numElements);
+    uint8_t arr[10];
+    writeVarInt(numElements, arr, sizeof(arr));
+    while(s->available() && bytes_written+offset < l){
+        s->write(arr[offset+bytes_written]);
+        bytes_written++;
+    }
+    while(s->available() && bytes_written+offset < l+witnessLen){
+        s->write(witnessArray[bytes_written+offset-l]);
+        bytes_written++;
+    }
+    return bytes_written;
+}
+size_t Witness::length() const{
+    return witnessLen + lenVarInt(numElements);
+}
+size_t Witness::push(const uint8_t * data, size_t len){
+    if(witnessLen + len + lenVarInt(len) > MAX_SCRIPT_SIZE){
+        clear();
+        return 0;
+    }
+    if(witnessLen == 0){
+        witnessArray = (uint8_t *) calloc( len + lenVarInt(len), sizeof(uint8_t));
+    }else{
+        witnessArray = (uint8_t *) realloc( witnessArray, (witnessLen + len + lenVarInt(len)) * sizeof(uint8_t));
+    }
+    writeVarInt(len, witnessArray+witnessLen, lenVarInt(len));
+    memcpy(witnessArray + witnessLen + lenVarInt(len), data, len);
+    witnessLen += len+lenVarInt(len);
+    numElements++;
+    return witnessLen;
+}
+size_t Witness::push(const PublicKey pubkey){
+    uint8_t sec[65];
+    uint8_t len = pubkey.sec(sec, sizeof(sec));
+    push(sec, len);
+    return witnessLen;
+}
+size_t Witness::push(const Signature sig, SigHashType sigType){
+    uint8_t der[75];
+    uint8_t len = sig.der(der, sizeof(der));
+    der[len] = sigType;
+    push(der, len+1);
+    return witnessLen;
+}
+size_t Witness::push(const Script sc){
+    uint8_t len = sc.length();
+    uint8_t * tmp;
+    tmp = (uint8_t *)calloc(len, sizeof(uint8_t));
+    size_t l = sc.serialize(tmp, len);
+    size_t dl = readVarInt(tmp, len);
+    push(tmp+l-dl, dl);
+    free(tmp);
+    return witnessLen;
+}
+Witness::Witness(const Witness &other):Witness(){
+    numElements = other.numElements;
+    if(other.witnessLen > 0){
+        witnessLen = other.witnessLen;
+        witnessArray = (uint8_t *) calloc( witnessLen, sizeof(uint8_t));
+        memcpy(witnessArray, other.witnessArray, witnessLen);
+    }
+};
+Witness &Witness::operator=(Witness const &other){
+    clear();
+    numElements = other.numElements;
+    if(other.witnessLen > 0){
+        witnessLen = other.witnessLen;
+        witnessArray = (uint8_t *) calloc( witnessLen, sizeof(uint8_t));
+        memcpy(witnessArray, other.witnessArray, witnessLen);
     }
     return *this;
 };

@@ -1,5 +1,69 @@
 #include "PSBT.h"
 
+// descriptor checksum from https://github.com/bitcoin/bitcoin/blob/master/src/script/descriptor.cpp
+uint64_t PolyMod(uint64_t c, int val){
+    uint8_t c0 = c >> 35;
+    c = ((c & 0x7ffffffff) << 5) ^ val;
+    if (c0 & 1) c ^= 0xf5dee51989;
+    if (c0 & 2) c ^= 0xa9fdca3312;
+    if (c0 & 4) c ^= 0x1bab10e32d;
+    if (c0 & 8) c ^= 0x3706b1677a;
+    if (c0 & 16) c ^= 0x644d626ffd;
+    return c;
+}
+
+size_t descriptorChecksum(const char * span, size_t spanLen, char * output, size_t outputSize){
+    /** A character set designed such that:
+     *  - The most common 'unprotected' descriptor characters (hex, keypaths) are in the first group of 32.
+     *  - Case errors cause an offset that's a multiple of 32.
+     *  - As many alphabetic characters are in the same group (while following the above restrictions).
+     *
+     * If p(x) gives the position of a character c in this character set, every group of 3 characters
+     * (a,b,c) is encoded as the 4 symbols (p(a) & 31, p(b) & 31, p(c) & 31, (p(a) / 32) + 3 * (p(b) / 32) + 9 * (p(c) / 32).
+     * This means that changes that only affect the lower 5 bits of the position, or only the higher 2 bits, will just
+     * affect a single symbol.
+     *
+     * As a result, within-group-of-32 errors count as 1 symbol, as do cross-group errors that don't affect
+     * the position within the groups.
+     */
+	memset(output, 0, outputSize);
+	if(outputSize < 8){
+		return 0;
+	}
+    static const char * INPUT_CHARSET = "0123456789()[],'/*abcdefgh@:$%{}IJKLMNOPQRSTUVWXYZ&+-.;<=>?!^_|~ijklmnopqrstuvwxyzABCDEFGH`#\"\\ ";
+
+    /** The character set for the checksum itself (same as bech32). */
+    static const char * CHECKSUM_CHARSET = "qpzry9x8gf2tvdw0s3jn54khce6mua7l";
+
+    uint64_t c = 1;
+    int cls = 0;
+    int clscount = 0;
+    // size_t len = strlen(span);
+    for(uint i=0; i<spanLen; i++){
+    	char ch = span[i];
+        const char * pch = strchr(INPUT_CHARSET, ch);
+        if(pch==NULL){ // char not in the alphabet
+            return 0;
+        }
+        size_t pos = pch - INPUT_CHARSET;
+        c = PolyMod(c, pos & 31); // Emit a symbol for the position inside the group, for every character.
+        cls = cls * 3 + (pos >> 5); // Accumulate the group numbers
+        if (++clscount == 3) {
+            // Emit an extra symbol representing the group numbers, for every 3 characters.
+            c = PolyMod(c, cls);
+            cls = 0;
+            clscount = 0;
+        }
+    }
+    if (clscount > 0) c = PolyMod(c, cls);
+    for (int j = 0; j < 8; ++j) c = PolyMod(c, 0); // Shift further to determine the checksum.
+    c ^= 1; // Prevent appending zeroes from not affecting the checksum.
+
+    memset(output, ' ', 8);
+    for (int j = 0; j < 8; ++j) output[j] = CHECKSUM_CHARSET[(c >> (5 * (7 - j))) & 31];
+    return 8;
+}
+
 size_t PSBT::from_stream(ParseStream *s){
     if(status == PARSING_FAILED){
         return 0;

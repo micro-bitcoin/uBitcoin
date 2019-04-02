@@ -57,6 +57,9 @@ typedef struct{
     Script witnessScript;
 } PSBTOutputMetadata;
 
+/** \brief Calculates descriptor checksum for Bitcoin Core. */
+size_t descriptorChecksum(const char * span, size_t spanLen, char * output, size_t outputSize);
+
 /** \brief PSBT class. See [bip174](https://github.com/bitcoin/bips/blob/master/bip-0174.mediawiki) */
 class PSBT : public Streamable{
 protected:

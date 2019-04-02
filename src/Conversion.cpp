@@ -4,10 +4,9 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-// const static ?
-char BASE58_CHARS[] = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
-char BASE43_CHARS[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ$*+-./:";
-char BASE64_CHARS[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+static const char BASE58_CHARS[] = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+static const char BASE43_CHARS[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ$*+-./:";
+static const char BASE64_CHARS[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 size_t toHex(const uint8_t * array, size_t arraySize, char * output, size_t outputSize){
     // uint8_t * array = (uint8_t *) arr;
@@ -260,7 +259,7 @@ size_t fromBase58(const char * encoded, size_t encodedSize, uint8_t * output, si
     size_t l;
     // looking for the end of char array
     for(l=0; l<encodedSize; l++){
-        char * pch = strchr(BASE58_CHARS, encoded[l]);
+        const char * pch = strchr(BASE58_CHARS, encoded[l]);
         if(pch==NULL){ // char not in the alphabet
             break;
         }
@@ -281,7 +280,7 @@ size_t fromBase58(const char * encoded, size_t encodedSize, uint8_t * output, si
 
     uint16_t val = 0;
     for(size_t i = 0; i < encodedSize; i++){
-        char * pch = strchr(BASE58_CHARS, encoded[i]);
+        const char * pch = strchr(BASE58_CHARS, encoded[i]);
         if(pch!=NULL){
             val = pch - BASE58_CHARS;
             for(size_t j = 0; j < size; j++){
@@ -451,7 +450,7 @@ size_t fromBase43(const char * encoded, size_t encodedSize, uint8_t * output, si
     size_t l;
     // looking for the end of char array
     for(l=0; l<encodedSize; l++){
-        char * pch = strchr(BASE43_CHARS, encoded[l]);
+        const char * pch = strchr(BASE43_CHARS, encoded[l]);
         if(pch==NULL){ // char not in the alphabet
             break;
         }
@@ -472,7 +471,7 @@ size_t fromBase43(const char * encoded, size_t encodedSize, uint8_t * output, si
 
     uint16_t val = 0;
     for(size_t i = 0; i < encodedSize; i++){
-        char * pch = strchr(BASE43_CHARS, encoded[i]);
+        const char * pch = strchr(BASE43_CHARS, encoded[i]);
         if(pch!=NULL){
             val = pch - BASE43_CHARS;
             for(size_t j = 0; j < size; j++){
@@ -562,7 +561,7 @@ size_t fromBase64(const char * encoded, size_t encodedSize, uint8_t * output, si
         }
         uint32_t val = 0;
         for(uint i=0; i<4; i++){
-            char * pch = strchr(BASE64_CHARS, encoded[cur*4+i]);
+            const char * pch = strchr(BASE64_CHARS, encoded[cur*4+i]);
             if(pch!=NULL){
                 val = (val << 6) + ((pch - BASE64_CHARS) & 0x3F);
             }else{

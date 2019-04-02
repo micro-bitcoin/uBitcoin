@@ -156,7 +156,9 @@ size_t Signature::from_stream(ParseStream *stream){
         bytes_read++;
     }
     if(slen() != tot[2]){ status = PARSING_FAILED; return bytes_read; }
-
+    if(bytes_parsed+bytes_read == 4+tot[1]+2+tot[2]){
+        status = PARSING_DONE;
+    }
     bytes_parsed+=bytes_read;
     return bytes_read;
 }

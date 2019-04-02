@@ -7,7 +7,7 @@ size_t SerializeStream::serialize(const Streamable * s, size_t offset){
 size_t ParseStream::parse(Streamable * s){
     return s->from_stream(this);
 }
-/************ Parse Stream Class ************/
+/************ Parse Byte Stream Class ************/
 
 ParseByteStream::ParseByteStream(const uint8_t * arr, size_t length, encoding_format f){
     last = -1;
@@ -74,6 +74,53 @@ size_t ParseByteStream::read(uint8_t *arr, size_t length){
     }
     return cc;
 }
+
+/************ Serialize Byte Stream Class ************/
+
+SerializeByteStream::SerializeByteStream(uint8_t * arr, size_t length, encoding_format f){
+    format = f; cursor = 0; buf = arr; len = length;
+    memset(arr, 0, length);
+}
+SerializeByteStream::SerializeByteStream(char * arr, size_t length, encoding_format f){
+    format = f; cursor = 0; buf = (uint8_t *)arr; len = length;
+    memset(arr, 0, length);
+};
+size_t SerializeByteStream::available(){
+    size_t a = len-cursor;
+    if(format == HEX_ENCODING){
+        a = a/2;
+    }
+    return a;
+};
+size_t SerializeByteStream::write(uint8_t b){
+    if(available() > 0){
+        if(format == HEX_ENCODING){
+            buf[cursor] = ((b >> 4) & 0x0F) + '0';
+            if(buf[cursor] > '9'){
+                    buf[cursor] += 'a'-'9'-1;
+            }
+            cursor++;
+            buf[cursor] = (b & 0x0F) + '0';
+            if(buf[cursor] > '9'){
+                    buf[cursor] += 'a'-'9'-1;
+            }
+            cursor++;
+        }else{
+            buf[cursor] = b;
+            cursor++;
+        }
+        return 1;
+    }
+    return 0;
+};
+size_t SerializeByteStream::write(const uint8_t *arr, size_t length){
+    size_t l = 0;
+    while(available()>0 && l < length){
+        write(arr[l]);
+        l++;
+    }
+    return l;
+};
 
 /************ Readable Class ************/
 

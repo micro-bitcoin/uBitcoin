@@ -51,6 +51,11 @@ size_t fromHex(const char * hex, uint8_t * array, size_t arraySize);
 size_t fromHex(const char * hex, size_t hexLen, uint8_t * array, size_t arraySize);
 uint8_t hexToVal(char c);
 
+size_t toBase64Length(const uint8_t * array, size_t arraySize);
+size_t toBase64(const uint8_t * array, size_t arraySize, char * output, size_t outputSize);
+size_t fromBase64Length(const char * array, size_t arraySize);
+size_t fromBase64(const char * encoded, size_t encodedSize, uint8_t * output, size_t outputSize);
+
 /* int conversion */
 uint64_t littleEndianToInt(const uint8_t * array, size_t arraySize);
 void intToLittleEndian(uint64_t num, uint8_t * array, size_t arraySize);

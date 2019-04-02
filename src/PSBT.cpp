@@ -350,7 +350,7 @@ int PSBT::add(uint8_t section, const Script * k, const Script * v){
 					PSBTDerivation * p = txOutsMeta[output].derivations;
 					txOutsMeta[output].derivationsLen ++;
 					txOutsMeta[output].derivations = new PSBTDerivation[txOutsMeta[output].derivationsLen];
-					for(uint i=0; i<txOutsMeta[output].derivationsLen-1; i++){
+					for(int i=0; i<txOutsMeta[output].derivationsLen-1; i++){
 						txOutsMeta[output].derivations[i] = p[i];
 					}
 					delete [] p;
@@ -367,11 +367,69 @@ int PSBT::add(uint8_t section, const Script * k, const Script * v){
 }
 
 size_t PSBT::to_stream(SerializeStream *s, size_t offset) const{
-	return s->serialize(&tx, offset);
+	// PSBT prefix + raw transaction key
+	uint8_t prefix[] = {0x70, 0x73, 0x62, 0x74, 0xff, 0x01, 0x00};
+	size_t bytes_written = 0;
+	while(s->available() && bytes_written+offset < 7){
+		s->write(prefix[bytes_written+offset]);
+		bytes_written++;
+	}
+	size_t cur = 7;
+	uint8_t arr[10];
+	size_t l = writeVarInt(tx.length(), arr, 10);
+	while(s->available() && bytes_written+offset < cur+l){
+		s->write(arr[bytes_written+offset-cur]);
+		bytes_written++;
+	}
+	cur+=l;
+	while(s->available() && bytes_written+offset < cur+tx.length()){
+		bytes_written += s->serialize(&tx, offset+bytes_written-cur);
+	}
+	cur+=tx.length();
+	uint8_t sections_number = 1 + tx.inputsNumber + tx.outputsNumber;
+	uint8_t section = 0;
+	while(s->available() && section < sections_number){
+		if(section > 0 && section < tx.inputsNumber+1){
+			uint8_t input = section-1;
+			for(uint i=0; i<txInsMeta[input].signaturesLen; i++){
+				uint8_t key_arr[67];
+				key_arr[1] = 0x02; // PSBT_IN_PARTIAL_SIG
+				uint8_t key_len = 1+txInsMeta[input].signatures[i].pubkey.serialize(key_arr+2, 65);
+				key_arr[0] = key_len;
+				while(s->available() && bytes_written+offset-cur < key_len+1){
+					s->write(key_arr[bytes_written+offset-cur]);
+					bytes_written++;
+				}
+				cur += key_len+1;
+				uint8_t val_arr[100];
+				uint8_t val_len = 1+txInsMeta[input].signatures[i].signature.serialize(val_arr+1, 98);
+				val_arr[0] = val_len;
+				val_arr[val_len] = SIGHASH_ALL;
+				while(s->available() && bytes_written+offset-cur < val_len+1){
+					s->write(val_arr[bytes_written+offset-cur]);
+					bytes_written++;
+				}
+				cur += val_len+1;
+			}
+		}
+		s->write(0);
+		bytes_written++;
+		section++;
+		cur++;
+	}
+	return bytes_written;
 }
 
 size_t PSBT::length() const{
-	return tx.length();
+	uint8_t sections_number = 1 + tx.inputsNumber + tx.outputsNumber;
+	size_t len = 7 + lenVarInt(tx.length()) + tx.length() + sections_number;
+	for(uint input=0; input<tx.inputsNumber; input++){
+		for(uint i=0; i<txInsMeta[input].signaturesLen; i++){
+			len += 2+txInsMeta[input].signatures[i].pubkey.length();
+			len += 2+txInsMeta[input].signatures[i].signature.length();
+		}
+	}
+	return len;
 }
 
 PSBT::PSBT(PSBT const &other){
@@ -476,13 +534,15 @@ uint8_t PSBT::sign(const HDPrivateKey root){
 						}else{
 							if(txInsMeta[i].redeemScript.length() > 1){
 								if(txInsMeta[i].redeemScript.type() == P2WPKH){ // P2SH_P2WPKH
-								    tx.sigHashSegwit(h, i, txInsMeta[i].redeemScript, txInsMeta[i].txOut.amount);
+								    // tx.sigHashSegwit(h, i, txInsMeta[i].redeemScript, txInsMeta[i].txOut.amount);
+								    tx.sigHashSegwit(h, i, pk.publicKey().script(), txInsMeta[i].txOut.amount);
 								}else{ // P2SH
 								    tx.sigHash(h, i, txInsMeta[i].redeemScript);
 								}
 							}else{ // P2WPKH / P2PKH / DIRECT_SCRIPT
 								if(txInsMeta[i].txOut.scriptPubkey.type() == P2WPKH){
-								    tx.sigHashSegwit(h, i, txInsMeta[i].txOut.scriptPubkey, txInsMeta[i].txOut.amount);
+								    // tx.sigHashSegwit(h, i, txInsMeta[i].txOut.scriptPubkey, txInsMeta[i].txOut.amount);
+								    tx.sigHashSegwit(h, i, pk.publicKey().script(), txInsMeta[i].txOut.amount);
 								}else{ // P2PKH / DIRECT_SCRIPT
 								    tx.sigHash(h, i, txInsMeta[i].txOut.scriptPubkey);
 								}
@@ -498,8 +558,12 @@ uint8_t PSBT::sign(const HDPrivateKey root){
 						Script key;
 						key.parse(arr, len+1);
 
+						uint8_t varr[100];
+						len = 1+sig.serialize(varr+1, 99);
+						varr[0] = len;
+						varr[len] = SIGHASH_ALL;
 						Script value;
-						value.push(sig);
+						value.parse(varr, len+1);
 						add(i+1, &key, &value);
 						counter++; // can sign
 					}

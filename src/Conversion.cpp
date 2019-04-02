@@ -4,9 +4,10 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-// consts static PROGMEM?
+// const static ?
 char BASE58_CHARS[] = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
 char BASE43_CHARS[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ$*+-./:";
+char BASE64_CHARS[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 size_t toHex(const uint8_t * array, size_t arraySize, char * output, size_t outputSize){
     // uint8_t * array = (uint8_t *) arr;
@@ -499,6 +500,104 @@ size_t fromBase43(const char * encoded, size_t encodedSize, uint8_t * output, si
     memcpy(output, tmp+shift, size-shift);
     free(tmp);
     return size-shift;
+}
+
+/******************* Base 64 conversion *******************/
+
+size_t toBase64Length(const uint8_t * array, size_t arraySize){
+    size_t v = (arraySize / 3) * 4;
+    if(arraySize % 3 != 0){
+        v += 4;
+    }
+    return v;
+}
+size_t toBase64(const uint8_t * array, size_t arraySize, char * output, size_t outputSize){
+    memset(output, 0, outputSize);
+    size_t cur = 0;
+    if(outputSize < toBase64Length(array, arraySize)){
+        return 0;
+    }
+    while(3 * cur < arraySize - 3){
+        uint32_t val = bigEndianToInt(array+3*cur, 3);
+        for(uint i=0; i<4; i++){
+            output[4*cur + i] = BASE64_CHARS[((val >> (6*(3-i))) & 0x3F)];
+        }
+        cur++;
+    }
+    if(arraySize % 3 != 0){
+        uint8_t rem = arraySize % 3;
+        uint32_t val = bigEndianToInt(array+3*cur, 3-rem);
+        val = val << ((3-rem) * 8);
+        for(uint i=0; i<4; i++){
+            output[4*cur + i] = BASE64_CHARS[((val >> (6*(3-i))) & 0x3F)];
+        }
+        memset(output + 4 * cur + 1 + rem, '=', 3-rem);
+        cur++;
+    }else{
+        uint32_t val = bigEndianToInt(array+3*cur, 3);
+        for(uint i=0; i<4; i++){
+            output[4*cur + i] = BASE64_CHARS[((val >> (6*(3-i))) & 0x3F)];
+        }
+        cur++;
+    }
+    return 4*cur;
+}
+size_t fromBase64Length(const char * array, size_t arraySize){
+    size_t v = arraySize * 3 / 4;
+    if(array[arraySize-1] == '='){
+        v--;
+    }
+    if(array[arraySize-2] == '='){
+        v--;
+    }
+    return v;
+}
+size_t fromBase64(const char * encoded, size_t encodedSize, uint8_t * output, size_t outputSize){
+    size_t cur = 0;
+    memset(output, 0, outputSize);
+    while(cur < encodedSize/4){
+        if(encodedSize < cur*4+4){
+            memset(output, 0, outputSize);
+            return 0;
+        }
+        uint32_t val = 0;
+        for(uint i=0; i<4; i++){
+            char * pch = strchr(BASE64_CHARS, encoded[cur*4+i]);
+            if(pch!=NULL){
+                val = (val << 6) + ((pch - BASE64_CHARS) & 0x3F);
+            }else{
+                if(encoded[cur*4+i] == '='){
+                    if(i==3){
+                        val = (val >> 2);
+                        if(outputSize < 3*cur+2){
+                            memset(output, 0, outputSize);
+                            return 0;
+                        }
+                        intToBigEndian(val, output+3*cur, 2);
+                        return 3*cur + 2;
+                    }
+                    if(i==2){
+                        val = (val >> 4);
+                        if(outputSize < 3*cur+1){
+                            memset(output, 0, outputSize);
+                            return 0;
+                        }
+                        intToBigEndian(val, output+3*cur, 1);
+                        return 3*cur + 1;
+                    }
+                }
+                memset(output, 0, outputSize);
+                return 0;
+            }
+        }
+        if(outputSize < 3*(cur+1)){
+            memset(output, 0, outputSize);
+            return 0;
+        }
+        intToBigEndian(val, output+3*cur, 3);
+        cur++;
+    }
+    return 3 * cur;
 }
 
 /* Integer conversion */

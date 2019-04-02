@@ -10,6 +10,7 @@
 enum encoding_format{
     RAW = 0,
     HEX_ENCODING = 16
+    // TODO: would be nice to have base64 encoding here
 };
 
 enum parse_status{
@@ -63,50 +64,11 @@ private:
     size_t len;
     encoding_format format;
 public:
-    SerializeByteStream(uint8_t * arr, size_t length, encoding_format f=RAW){
-        format = f; cursor = 0; buf = arr; len = length;
-        memset(arr, 0, length);
-    };
-    explicit SerializeByteStream(char * arr, size_t length, encoding_format f=HEX_ENCODING){
-        format = f; cursor = 0; buf = (uint8_t *)arr; len = length;
-        memset(arr, 0, length);
-    };
-    size_t available(){
-        size_t a = len-cursor;
-        if(format == HEX_ENCODING){
-            a = a/2;
-        }
-        return a;
-    };
-    size_t write(uint8_t b){
-        if(available() > 0){
-            if(format == HEX_ENCODING){
-                buf[cursor] = ((b >> 4) & 0x0F) + '0';
-                if(buf[cursor] > '9'){
-                        buf[cursor] += 'a'-'9'-1;
-                }
-                cursor++;
-                buf[cursor] = (b & 0x0F) + '0';
-                if(buf[cursor] > '9'){
-                        buf[cursor] += 'a'-'9'-1;
-                }
-                cursor++;
-            }else{
-                buf[cursor] = b;
-                cursor++;
-            }
-            return 1;
-        }
-        return 0;
-    };
-    size_t write(const uint8_t *arr, size_t length){
-        size_t l = 0;
-        while(available()>0 && l < length){
-            write(arr[l]);
-            l++;
-        }
-        return l;
-    };
+    SerializeByteStream(uint8_t * arr, size_t length, encoding_format f=RAW);
+    explicit SerializeByteStream(char * arr, size_t length, encoding_format f=HEX_ENCODING);
+    size_t available();
+    size_t write(uint8_t b);
+    size_t write(const uint8_t *arr, size_t length);
 };
 
 /** Abstract Readable class that can be encoded as a string and displayed to the user

@@ -22,19 +22,32 @@
  */
 
 #include "rand.h"
+#include "sha2.h"
 
 #ifndef RAND_PLATFORM_INDEPENDENT
 
-// #pragma message("NOT SUITABLE FOR PRODUCTION USE! Replace random32() function with your own secure code.")
-
-// The following code is not supposed to be used in a production environment.
-// It's included only to make the library testable.
-// The message above tries to prevent any accidental use outside of the test environment.
-//
-// You are supposed to replace the random8() and random32() function with your own secure code.
-// There is also a possibility to replace the random_buffer() function as it is defined as a weak symbol.
-
 static uint32_t seed = 0;
+static uint8_t hash[32];
+
+/* 
+ * On boot there is random some device-dependent junk in the RAM
+ * It may depend on the platform, but in most cases it can be used
+ * to get some device-specific randomness.
+ * This is a junky-code that may be not perfect
+ * but works much better than normal non-cryptographic PRNGs
+ * 
+ * Replace the random32() function with your own secure code.
+ * There is also a possibility to replace the random_buffer() function 
+ * as it is defined as a weak symbol.
+ */
+
+static void init_ram_seed(){
+	uint8_t * arr = (uint8_t *)malloc(1000); // just allocate some memory
+	memcpy(arr, hash, 32); // to maintain previous entropy, kinda
+	sha256_Raw(arr, 1000, hash);
+	free(arr);
+	seed++;
+}
 
 void random_reseed(const uint32_t value)
 {
@@ -43,10 +56,17 @@ void random_reseed(const uint32_t value)
 
 uint32_t random32(void)
 {
-	// Linear congruential generator from Numerical Recipes
-	// https://en.wikipedia.org/wiki/Linear_congruential_generator
-	seed = 1664525 * seed + 1013904223;
-	return seed;
+	if(seed == 0){
+		init_ram_seed();
+	}
+	SHA256_CTX	context;
+	sha256_Init(&context);
+	sha256_Update(&context, hash, 32);
+	sha256_Update(&context, (uint8_t *)&seed, 4);
+	sha256_Final(&context, hash);
+	uint32_t * results = (uint32_t *)hash;
+	seed = results[0];
+	return results[1];
 }
 
 #endif /* RAND_PLATFORM_INDEPENDENT */

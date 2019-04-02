@@ -4,9 +4,10 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-// consts static PROGMEM?
+// const static ?
 char BASE58_CHARS[] = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
 char BASE43_CHARS[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ$*+-./:";
+char BASE64_CHARS[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 size_t toHex(const uint8_t * array, size_t arraySize, char * output, size_t outputSize){
     // uint8_t * array = (uint8_t *) arr;
@@ -28,27 +29,22 @@ size_t toHex(const uint8_t * array, size_t arraySize, char * output, size_t outp
     }
     return 2*arraySize;
 }
-size_t toHex(const uint8_t * array, size_t arraySize, ByteStream * s){
-    // uint8_t * array = (uint8_t *) arr;
-    char b[3] = "";
-    for(size_t i=0; i < arraySize; i++){
-        uint8_t v = array[i];
-        char c = (v >> 4) + '0';
-        if(c > '9'){
-            c += 'a'-'9'-1;
-        }
-        b[0] = c;
-        c = (v & 0x0F) + '0';
-        if(c > '9'){
-            c += 'a'-'9'-1;
-        }
-        b[1] = c;
-        // sprintf(b, "%0x", array[i]);
-        s->write((uint8_t * )b, 2);
-    }
-    return 2*arraySize;
-}
+#if USE_STD_STRING
+std::string toHex(const uint8_t * array, size_t arraySize){
+    char * output;
+    size_t outputSize = arraySize * 2 + 1;
+    output = (char *) malloc(outputSize);
 
+    toHex(array, arraySize, output, outputSize);
+
+    std::string result(output);
+
+    memset(output, 0, outputSize);
+    free(output);
+
+    return result;
+}
+#endif
 #if USE_ARDUINO_STRING
 String toHex(const uint8_t * array, size_t arraySize){
     char * output;
@@ -506,6 +502,104 @@ size_t fromBase43(const char * encoded, size_t encodedSize, uint8_t * output, si
     return size-shift;
 }
 
+/******************* Base 64 conversion *******************/
+
+size_t toBase64Length(const uint8_t * array, size_t arraySize){
+    size_t v = (arraySize / 3) * 4;
+    if(arraySize % 3 != 0){
+        v += 4;
+    }
+    return v;
+}
+size_t toBase64(const uint8_t * array, size_t arraySize, char * output, size_t outputSize){
+    memset(output, 0, outputSize);
+    size_t cur = 0;
+    if(outputSize < toBase64Length(array, arraySize)){
+        return 0;
+    }
+    while(3 * cur < arraySize - 3){
+        uint32_t val = bigEndianToInt(array+3*cur, 3);
+        for(uint i=0; i<4; i++){
+            output[4*cur + i] = BASE64_CHARS[((val >> (6*(3-i))) & 0x3F)];
+        }
+        cur++;
+    }
+    if(arraySize % 3 != 0){
+        uint8_t rem = arraySize % 3;
+        uint32_t val = bigEndianToInt(array+3*cur, 3-rem);
+        val = val << ((3-rem) * 8);
+        for(uint i=0; i<4; i++){
+            output[4*cur + i] = BASE64_CHARS[((val >> (6*(3-i))) & 0x3F)];
+        }
+        memset(output + 4 * cur + 1 + rem, '=', 3-rem);
+        cur++;
+    }else{
+        uint32_t val = bigEndianToInt(array+3*cur, 3);
+        for(uint i=0; i<4; i++){
+            output[4*cur + i] = BASE64_CHARS[((val >> (6*(3-i))) & 0x3F)];
+        }
+        cur++;
+    }
+    return 4*cur;
+}
+size_t fromBase64Length(const char * array, size_t arraySize){
+    size_t v = arraySize * 3 / 4;
+    if(array[arraySize-1] == '='){
+        v--;
+    }
+    if(array[arraySize-2] == '='){
+        v--;
+    }
+    return v;
+}
+size_t fromBase64(const char * encoded, size_t encodedSize, uint8_t * output, size_t outputSize){
+    size_t cur = 0;
+    memset(output, 0, outputSize);
+    while(cur < encodedSize/4){
+        if(encodedSize < cur*4+4){
+            memset(output, 0, outputSize);
+            return 0;
+        }
+        uint32_t val = 0;
+        for(uint i=0; i<4; i++){
+            char * pch = strchr(BASE64_CHARS, encoded[cur*4+i]);
+            if(pch!=NULL){
+                val = (val << 6) + ((pch - BASE64_CHARS) & 0x3F);
+            }else{
+                if(encoded[cur*4+i] == '='){
+                    if(i==3){
+                        val = (val >> 2);
+                        if(outputSize < 3*cur+2){
+                            memset(output, 0, outputSize);
+                            return 0;
+                        }
+                        intToBigEndian(val, output+3*cur, 2);
+                        return 3*cur + 2;
+                    }
+                    if(i==2){
+                        val = (val >> 4);
+                        if(outputSize < 3*cur+1){
+                            memset(output, 0, outputSize);
+                            return 0;
+                        }
+                        intToBigEndian(val, output+3*cur, 1);
+                        return 3*cur + 1;
+                    }
+                }
+                memset(output, 0, outputSize);
+                return 0;
+            }
+        }
+        if(outputSize < 3*(cur+1)){
+            memset(output, 0, outputSize);
+            return 0;
+        }
+        intToBigEndian(val, output+3*cur, 3);
+        cur++;
+    }
+    return 3 * cur;
+}
+
 /* Integer conversion */
 
 uint64_t littleEndianToInt(const uint8_t * array, size_t arraySize){
@@ -563,17 +657,6 @@ uint64_t readVarInt(const uint8_t * array, size_t arraySize){
         return littleEndianToInt(array + 1, len);
     }
 }
-uint64_t readVarInt(ByteStream &s){
-    uint8_t first = s.read();
-    if(first < 0xfd){
-        return first;
-    }else{
-        uint8_t len = (1 << (first - 0xfc));
-        uint8_t array[8] = { 0 };
-        s.readBytes(array, len);
-        return littleEndianToInt(array, len);
-    }
-}
 
 // TODO: don't repeat yourself!
 size_t writeVarInt(uint64_t num, uint8_t * array, size_t arraySize){
@@ -597,85 +680,3 @@ size_t writeVarInt(uint64_t num, uint8_t * array, size_t arraySize){
     return len;
 }
 
-size_t writeVarInt(uint64_t num, ByteStream &s){
-    uint8_t len = lenVarInt(num);
-    if(len == 1){
-        s.write((uint8_t)(num & 0xFF));
-    }else{
-        switch(len){
-            case 3: s.write(0xfd);
-                    break;
-            case 5: s.write(0xfe);
-                    break;
-            case 9: s.write(0xff);
-                    break;
-        }
-        uint8_t array[8] = { 0 };
-        intToLittleEndian(num, array, len-1);
-        s.write(array, len-1);
-    }
-    return len;
-}
-
-/* Stream conversion */
-ByteStream::ByteStream(){
-    len = 0;
-    cursor = 0;
-    buf = NULL;
-}
-ByteStream::ByteStream(const uint8_t * buffer, size_t length){
-    len = length;
-    buf = (uint8_t *) calloc( length, sizeof(uint8_t));
-    memcpy(buf, buffer, length);
-}
-ByteStream::~ByteStream(void){
-    if(len > 0){
-        free(buf);
-    }
-}
-size_t ByteStream::available(){
-    if(cursor >= len){
-        return 0;
-    }
-    return len-cursor;
-}
-void ByteStream::flush(){
-    return;
-}
-int ByteStream::peek(){
-    if(available()){
-        uint8_t c =  buf[cursor];
-        return c;
-    }else{
-        return -1;
-    }
-}
-int ByteStream::read(){
-    if(available() > 0){
-        uint8_t c =  buf[cursor];
-        cursor++;
-        return c;
-    }else{
-        return -1;
-    }
-}
-size_t ByteStream::readBytes(uint8_t * buffer, size_t length){
-    if(available() < length){
-        length = available();
-    }
-    memcpy(buffer, buf+cursor, length);
-    cursor += length;
-    return length;
-}
-size_t ByteStream::write(uint8_t b){
-    buf = ( uint8_t * )realloc( buf, len + 1 );
-    buf[len] = b;
-    len ++;
-    return 1;
-}
-size_t ByteStream::write(uint8_t * arr, size_t length){
-    buf = ( uint8_t * )realloc( buf, len + length );
-    memcpy(buf + len, arr, length);
-    len += length;
-    return length;
-}

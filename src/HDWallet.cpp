@@ -16,129 +16,194 @@ using std::string;
 
 // ---------------------------------------------------------------- HDPrivateKey class
 
-// HD key prefixes are described here:
-// https://github.com/satoshilabs/slips/blob/master/slip-0132.md
-// useful tool: in https://iancoleman.io/bip39/
-
-// mainnet prefixes:
-
-// unknown or P2PKH
-uint8_t XPUB_PREFIX[4] = { 0x04, 0x88, 0xb2, 0x1e };
-uint8_t XPRV_PREFIX[4] = { 0x04, 0x88, 0xad, 0xe4 };
-
-// P2SH_P2WPKH
-uint8_t YPUB_PREFIX[4] = { 0x04, 0x9d, 0x7c, 0xb2 };
-uint8_t YPRV_PREFIX[4] = { 0x04, 0x9d, 0x78, 0x78 };
-
-// P2WPKH
-uint8_t ZPUB_PREFIX[4] = { 0x04, 0xb2, 0x47, 0x46 };
-uint8_t ZPRV_PREFIX[4] = { 0x04, 0xb2, 0x43, 0x0c };
-
-// testnet prefixes:
-
-// unknown or P2PKH
-uint8_t TPUB_PREFIX[4] = { 0x04, 0x35, 0x87, 0xcf };
-uint8_t TPRV_PREFIX[4] = { 0x04, 0x35, 0x83, 0x94 };
-
-// P2SH_P2WPKH
-uint8_t UPUB_PREFIX[4] = { 0x04, 0x4a, 0x52, 0x62 };
-uint8_t UPRV_PREFIX[4] = { 0x04, 0x4a, 0x4e, 0x28 };
-
-// P2WPKH
-uint8_t VPUB_PREFIX[4] = { 0x04, 0x5f, 0x1c, 0xf6 };
-uint8_t VPRV_PREFIX[4] = { 0x04, 0x5f, 0x18, 0xbc };
-
 // TODO: make friends with PrivateKey to get secret or inherit from it
 void HDPrivateKey::init(){
-    privateKey.compressed = true;
+    reset();
     memset(chainCode, 0, 32);
     depth = 0;
-    memset(fingerprint, 0, 4);
+    memset(parentFingerprint, 0, 4);
     childNumber = 0;
-    type = UNKNOWN_HD_TYPE;
+    type = UNKNOWN_TYPE;
+    status = PARSING_DONE;
 }
-HDPrivateKey::HDPrivateKey(void){
+HDPrivateKey::HDPrivateKey(void):PrivateKey(){
     init();
 }
 HDPrivateKey::HDPrivateKey(const uint8_t secret[32],
                            const uint8_t chain_code[32],
                            uint8_t key_depth,
-                           const uint8_t fingerprint_arr[4],
+                           const uint8_t parent_fingerprint_arr[4],
                            uint32_t child_number,
-                           bool use_testnet,
-                           uint8_t key_type){
+                           const Network * net,
+                           ScriptType key_type):PrivateKey(secret, true, net){
     init();
     type = key_type;
-    privateKey = PrivateKey(secret, true, use_testnet);
     memcpy(chainCode, chain_code, 32);
     depth = key_depth;
     childNumber = child_number;
-    if(fingerprint_arr != NULL){
-        memcpy(fingerprint, fingerprint_arr, 4);
+    if(parent_fingerprint_arr != NULL){
+        memcpy(parentFingerprint, parent_fingerprint_arr, 4);
     }else{
-        memset(fingerprint, 0, 4);
+        memset(parentFingerprint, 0, 4);
     }
 }
 HDPrivateKey::HDPrivateKey(const char * xprvArr){
     init();
-    size_t xprvLen = strlen(xprvArr);
-    uint8_t arr[85] = { 0 };
-    size_t l = fromBase58Check(xprvArr, xprvLen, arr, sizeof(arr));
-    if(l == 0){
-        return; // decoding error
-    }
-    bool testnet = false;
-    // checking prefix
-    if(memcmp(arr, XPRV_PREFIX, 4)==0){
-        type = UNKNOWN_HD_TYPE;
-    }else if(memcmp(arr, TPRV_PREFIX, 4)==0){
-        type = UNKNOWN_HD_TYPE;
-        testnet = true;
-    }else if(memcmp(arr, YPRV_PREFIX, 4)==0){
-        type = P2SH_P2WPKH;
-    }else if(memcmp(arr, UPRV_PREFIX, 4)==0){
-        type = P2SH_P2WPKH;
-        testnet = true;
-    }else if(memcmp(arr, ZPRV_PREFIX, 4)==0){
-        type = P2WPKH;
-    }else if(memcmp(arr, VPRV_PREFIX, 4)==0){
-        type = P2WPKH;
-        testnet = true;
-    }else{
-        // unknown prefix, fail
-        return;
-    }
-    depth = arr[4];
-    memcpy(fingerprint, arr+5, 4);
-    childNumber = 0;
-    for(int i=0; i<4; i++){
-        childNumber <<= 8;
-        childNumber += arr[9+i];
-    }
-    memcpy(chainCode, arr+13, 32);
-    uint8_t secret[32];
-    memcpy(secret, arr+46, 32);
-    privateKey = PrivateKey(secret, true, testnet);
+    from_str(xprvArr, strlen(xprvArr));
 }
-HDPrivateKey::HDPrivateKey(const char * mnemonic, size_t mnemonicSize, const char * password, size_t passwordSize, bool use_testnet){
-    fromMnemonic(mnemonic, mnemonicSize, password, passwordSize, use_testnet);
+HDPrivateKey::HDPrivateKey(const char * mnemonic, size_t mnemonicSize, const char * password, size_t passwordSize, const Network * net, void (*progress_callback)(float)){
+    fromMnemonic(mnemonic, mnemonicSize, password, passwordSize, net, progress_callback);
 }
 #if USE_STD_STRING
-HDPrivateKey::HDPrivateKey(std::string mnemonic, std::string password, bool use_testnet){
-    fromMnemonic(mnemonic, password, use_testnet);
+HDPrivateKey::HDPrivateKey(std::string mnemonic, std::string password, const Network * net, void (*progress_callback)(float)){
+    fromMnemonic(mnemonic, password, net, progress_callback);
 }
 #endif
 #if USE_ARDUINO_STRING
-HDPrivateKey::HDPrivateKey(String mnemonic, String password, bool use_testnet){
-    fromMnemonic(mnemonic, password, use_testnet);
+HDPrivateKey::HDPrivateKey(String mnemonic, String password, const Network * net, void (*progress_callback)(float)){
+    fromMnemonic(mnemonic, password, net, progress_callback);
 }
 #endif
 HDPrivateKey::~HDPrivateKey(void) {
-    // erase chain code from memory
     memset(chainCode, 0, 32);
-    // privateKey will clean everything up by itself
+    memset(num, 0, 32);
 }
-int HDPrivateKey::fromSeed(const uint8_t * seed, size_t seedSize, bool use_testnet){
+size_t HDPrivateKey::to_bytes(uint8_t * arr, size_t len) const{
+    uint8_t hex[78] = { 0 };
+    switch(type){
+        case P2WPKH:
+            memcpy(hex, network->zprv, 4);
+            break;
+        case P2SH_P2WPKH:
+            memcpy(hex, network->yprv, 4);
+            break;
+        default:
+            memcpy(hex, network->xprv, 4);
+    }
+    hex[4] = depth;
+    memcpy(hex+5, parentFingerprint, 4);
+    for(uint8_t i=0; i<4; i++){
+        hex[12-i] = ((childNumber >> (i*8)) & 0xFF);
+    }
+    memcpy(hex+13, chainCode, 32);
+    memcpy(hex+46, num, 32);
+    if(len > sizeof(hex)){
+        len = sizeof(hex);
+    }
+    memcpy(arr, hex, len);
+    return len;
+}
+size_t HDPrivateKey::to_stream(SerializeStream *s, size_t offset) const{
+    uint8_t hex[78] = { 0 };
+    size_t bytes_written = 0;
+    to_bytes(hex, sizeof(hex));
+    while(s->available() && bytes_written+offset < sizeof(hex)){
+        s->write(hex[bytes_written+offset]);
+        bytes_written++;
+    }
+    return bytes_written;
+}
+size_t HDPrivateKey::from_stream(ParseStream *s){
+    if(status == PARSING_FAILED){
+        return 0;
+    }
+    if(status == PARSING_DONE){
+        bytes_parsed = 0;
+    }
+    status = PARSING_INCOMPLETE;
+    size_t bytes_read = 0;
+    // reading the prefix
+    while(s->available() > 0 && bytes_parsed+bytes_read < 4){
+        prefix[bytes_parsed+bytes_read] = s->read();
+        bytes_read++;
+    }
+    if(bytes_parsed+bytes_read == 4){
+        bool found = false;
+        for(int i=0; i<networks_len; i++){
+            if(memcmp(prefix, networks[i]->xprv, 4)==0){
+                type = UNKNOWN_TYPE;
+                found = true;
+                network = networks[i];
+                break;
+            }else if(memcmp(prefix, networks[i]->yprv, 4)==0){
+                type = P2SH_P2WPKH;
+                found = true;
+                network = networks[i];
+                break;
+            }else if(memcmp(prefix, networks[i]->zprv, 4)==0){
+                type = P2WPKH;
+                found = true;
+                network = networks[i];
+                break;
+            }
+        }
+        if(!found){
+            status = PARSING_FAILED;
+            return bytes_read;
+        }
+    }
+    // depth
+    if(s->available() > 0 && bytes_parsed+bytes_read < 5){
+        depth = s->read();
+        bytes_read++;
+    }
+    // fingerprint
+    while(s->available() > 0 && bytes_parsed+bytes_read < 9){
+        parentFingerprint[bytes_parsed+bytes_read-5] = s->read();
+        bytes_read++;
+    }
+    // childnumber
+    while(s->available() > 0 && bytes_parsed+bytes_read < 13){
+        childNumber <<= 8;
+        childNumber += s->read();
+        bytes_read++;
+    }
+    // chaincode
+    while(s->available() > 0 && bytes_parsed+bytes_read < 45){
+        chainCode[bytes_parsed+bytes_read-13] = s->read();
+        bytes_read++;
+    }
+    // 00 before the private key
+    if(s->available() && bytes_parsed+bytes_read < 46){
+        uint8_t c = s->read();
+        bytes_read++;
+        if(c != 0){
+            status = PARSING_FAILED;
+            return bytes_read;
+        }
+    }
+    // num
+    while(s->available() > 0 && bytes_parsed+bytes_read < 78){
+        num[bytes_parsed+bytes_read-46] = s->read();
+        bytes_read++;
+    }
+    if(bytes_parsed+bytes_read == 78){
+        status = PARSING_DONE;
+        uint8_t zero[32] = { 0 };
+        if(memcmp(num, zero, 32)==0){ // should we add something else here?
+            status = PARSING_FAILED;
+        }
+        bignum256 n;
+        bn_read_be(num, &n);
+        bn_mod(&n, &secp256k1.order);
+        bn_write_be(&n, num);
+        pubKey = *this * GeneratorPoint;
+    }
+    bytes_parsed += bytes_read;
+    return bytes_read;
+}
+size_t HDPrivateKey::from_str(const char * xprvArr, size_t xprvLen){
+    init();
+    uint8_t arr[85] = { 0 };
+    size_t l = fromBase58Check(xprvArr, xprvLen, arr, sizeof(arr));
+    if(l == 0){
+        return 0; // decoding error
+    }
+    ParseByteStream s(arr, sizeof(arr));
+    HDPrivateKey::from_stream(&s);
+    return xprvLen;
+}
+int HDPrivateKey::fromSeed(const uint8_t * seed, size_t seedSize, const Network * net){
     init();
     uint8_t raw[64] = { 0 };
     SHA512 sha;
@@ -147,14 +212,16 @@ int HDPrivateKey::fromSeed(const uint8_t * seed, size_t seedSize, bool use_testn
     sha.write(seed, seedSize);
     sha.endHMAC(raw);
     // sha512Hmac((byte *)key, strlen(key), seed, 64, raw);
-    privateKey = PrivateKey(raw, true, use_testnet);
+    memcpy(num, raw, 32);
+    network = net;
     memcpy(chainCode, raw+32, 32);
+    pubKey = *this * GeneratorPoint;
     return 1;
 }
-// int HDPrivateKey::fromSeed(const uint8_t seed[64], bool use_testnet){
+// int HDPrivateKey::fromSeed(const uint8_t seed[64], const Network * net){
 //     fromSeed(seed, 64);
 // }
-int HDPrivateKey::fromMnemonic(const char * mnemonic, size_t mnemonicSize, const char * password, size_t passwordSize, bool use_testnet){
+int HDPrivateKey::fromMnemonic(const char * mnemonic, size_t mnemonicSize, const char * password, size_t passwordSize, const Network * net, void (*progress_callback)(float)){
     init();
     uint8_t seed[64] = { 0 };
     uint8_t ind[4] = { 0, 0, 0, 1 };
@@ -171,6 +238,9 @@ int HDPrivateKey::fromMnemonic(const char * mnemonic, size_t mnemonicSize, const
     memcpy(seed, u, 64);
     // other rounds
     for(int i=1; i<PBKDF2_ROUNDS; i++){
+        if(progress_callback != NULL && (i & 0xFF) == 0xFF){
+            progress_callback((float)i/(float)(PBKDF2_ROUNDS-1));
+        }
         sha.beginHMAC((uint8_t *)mnemonic, mnemonicSize);
         sha.write(u, sizeof(u));
         sha.endHMAC(u);
@@ -178,63 +248,32 @@ int HDPrivateKey::fromMnemonic(const char * mnemonic, size_t mnemonicSize, const
             seed[j] = seed[j] ^ u[j];
         }
     }
-    fromSeed(seed, sizeof(seed), use_testnet);
+    fromSeed(seed, sizeof(seed), net);
     return 1;
 }
 #if USE_STD_STRING
-int HDPrivateKey::fromMnemonic(std::string mnemonic, std::string password, bool use_testnet){
-    return fromMnemonic(mnemonic.c_str(), mnemonic.length(), password.c_str(), password.length(), use_testnet);
+int HDPrivateKey::fromMnemonic(std::string mnemonic, std::string password, const Network * net, void (*progress_callback)(float)){
+    return fromMnemonic(mnemonic.c_str(), mnemonic.length(), password.c_str(), password.length(), net, progress_callback);
 }
 #endif
 #if USE_ARDUINO_STRING
-int HDPrivateKey::fromMnemonic(String mnemonic, String password, bool use_testnet){
-    return fromMnemonic(mnemonic.c_str(), mnemonic.length(), password.c_str(), password.length(), use_testnet);
+int HDPrivateKey::fromMnemonic(String mnemonic, String password, const Network * net, void (*progress_callback)(float)){
+    return fromMnemonic(mnemonic.c_str(), mnemonic.length(), password.c_str(), password.length(), net, progress_callback);
 }
 #endif
-bool HDPrivateKey::isValid() const{
-    return privateKey.isValid();
-}
 int HDPrivateKey::xprv(char * arr, size_t len) const{
     uint8_t hex[78] = { 0 };
-    if(privateKey.testnet){
-        switch(type){
-            case P2WPKH:
-                memcpy(hex, VPRV_PREFIX, 4);
-                break;
-            case P2SH_P2WPKH:
-                memcpy(hex, UPRV_PREFIX, 4);
-                break;
-            default:
-                memcpy(hex, TPRV_PREFIX, 4);
-        }
-    }else{
-        switch(type){
-            case P2WPKH:
-                memcpy(hex, ZPRV_PREFIX, 4);
-                break;
-            case P2SH_P2WPKH:
-                memcpy(hex, YPRV_PREFIX, 4);
-                break;
-            default:
-                memcpy(hex, XPRV_PREFIX, 4);
-        }
-    }    hex[4] = depth;
-    memcpy(hex+5, fingerprint, 4);
-    for(uint8_t i=0; i<4; i++){
-        hex[12-i] = ((childNumber >> (i*8)) & 0xFF);
-    }
-    memcpy(hex+13, chainCode, 32);
-    memcpy(hex+46, privateKey.secret, 32);
+    to_bytes(hex, sizeof(hex));
     return toBase58Check(hex, sizeof(hex), arr, len);
 }
 int HDPrivateKey::address(char * addr, size_t len) const{
     switch(type){
         case P2WPKH:
-            return privateKey.segwitAddress(addr, len);
+            return segwitAddress(addr, len);
         case P2SH_P2WPKH:
-            return privateKey.nestedSegwitAddress(addr, len);
+            return nestedSegwitAddress(addr, len);
         default:
-            return privateKey.address(addr, len);
+            return legacyAddress(addr, len);
     }
 }
 #if USE_ARDUINO_STRING
@@ -246,17 +285,12 @@ String HDPrivateKey::xprv() const{
 String HDPrivateKey::address() const{
     switch(type){
         case P2WPKH:
-            return privateKey.segwitAddress();
+            return segwitAddress();
         case P2SH_P2WPKH:
-            return privateKey.nestedSegwitAddress();
+            return nestedSegwitAddress();
         default:
-            return privateKey.address();
+            return legacyAddress();
     }
-}
-size_t HDPrivateKey::printTo(Print &p) const{
-    char arr[112] = { 0 };
-    xprv(arr, sizeof(arr));
-    return p.print(arr);
 }
 #endif
 #if USE_STD_STRING
@@ -268,347 +302,311 @@ string HDPrivateKey::xprv() const{
 string HDPrivateKey::address() const{
     switch(type){
         case P2WPKH:
-            return privateKey.segwitAddress();
+            return segwitAddress();
         case P2SH_P2WPKH:
-            return privateKey.nestedSegwitAddress();
+            return nestedSegwitAddress();
         default:
-            return privateKey.address();
+            return legacyAddress();
     }
 }
 #endif
 int HDPrivateKey::xpub(char * arr, size_t len) const{
     uint8_t hex[111] = { 0 }; // TODO: real length, in xpub compressed = true
-    if(privateKey.testnet){
-        switch(type){
-            case P2WPKH:
-                memcpy(hex, VPUB_PREFIX, 4);
-                break;
-            case P2SH_P2WPKH:
-                memcpy(hex, UPUB_PREFIX, 4);
-                break;
-            default:
-                memcpy(hex, TPUB_PREFIX, 4);
-        }
-    }else{
-        switch(type){
-            case P2WPKH:
-                memcpy(hex, ZPUB_PREFIX, 4);
-                break;
-            case P2SH_P2WPKH:
-                memcpy(hex, YPUB_PREFIX, 4);
-                break;
-            default:
-                memcpy(hex, XPUB_PREFIX, 4);
-        }
+    switch(type){
+        case P2WPKH:
+            memcpy(hex, network->zpub, 4);
+            break;
+        case P2SH_P2WPKH:
+            memcpy(hex, network->ypub, 4);
+            break;
+        default:
+            memcpy(hex, network->xpub, 4);
     }
     hex[4] = depth;
-    memcpy(hex+5, fingerprint, 4);
+    memcpy(hex+5, parentFingerprint, 4);
     for(uint8_t i=0; i<4; i++){
         hex[12-i] = ((childNumber >> (i*8)) & 0xFF);
     }
     memcpy(hex+13, chainCode, 32);
 
     uint8_t sec[65] = { 0 };
-    int secLen = privateKey.publicKey().sec(sec, sizeof(sec));
+    int secLen = publicKey().sec(sec, sizeof(sec));
     memcpy(hex+45, sec, secLen);
     return toBase58Check(hex, 45+secLen, arr, len);
 }
-HDPublicKey HDPrivateKey::xpub() const{
-  char arr[112];
-  xpub(arr, sizeof(arr));
-  return HDPublicKey(arr);
+
+void HDPrivateKey::fingerprint(uint8_t arr[4]) const{
+    uint8_t secArr[33] = { 0 };
+    int l = publicKey().sec(secArr, sizeof(secArr));
+    uint8_t hash[20] = { 0 };
+    hash160(secArr, l, hash);
+    memcpy(arr, hash, 4);
 }
-// TODO: refactor to single function!
-HDPrivateKey HDPrivateKey::child(uint32_t index) const{
+
+HDPublicKey HDPrivateKey::xpub() const{
+    PublicKey p = publicKey();
+    return HDPublicKey(p.point, chainCode, depth, parentFingerprint, childNumber, network, type);
+}
+HDPrivateKey HDPrivateKey::child(uint32_t index, bool hardened) const{
+    if(index >= 0x80000000){
+        hardened = true;
+    }
     HDPrivateKey child;
 
-    uint8_t sec[65] = { 0 };
-    int l = privateKey.publicKey().sec(sec, sizeof(sec));
+    uint8_t sec[33] = { 0 };
+    int l = publicKey().sec(sec, sizeof(sec));
     uint8_t hash[20] = { 0 };
     hash160(sec, l, hash);
-    memcpy(child.fingerprint, hash, 4);
+    memcpy(child.parentFingerprint, hash, 4);
+    if(hardened && index < 0x80000000){
+        index += 0x80000000;
+    }
     child.childNumber = index;
     child.depth = depth+1;
-    child.type = type;
 
-    uint8_t data[69];
-    memcpy(data, sec, l);
-    for(uint8_t i=0; i<4; i++){
-        data[l+3-i] = ((index >> (i*8)) & 0xFF);
+    child.type = type;
+    child.network = network;
+    if(hardened){
+        if(depth == 0){
+            switch(index){
+                case 0x80000000+44:
+                    child.type = P2PKH;
+                    break;
+                case 0x80000000+49:
+                    child.type = P2SH_P2WPKH;
+                    break;
+                case 0x80000000+84:
+                    child.type = P2WPKH;
+                    break;
+            }
+        }
+        if(depth == 1 && type != UNKNOWN_TYPE){
+            if(index == 0x80000001){
+                child.network = &Testnet;
+            }
+            if(index == 0x80000000){
+                child.network = &Mainnet;
+            }
+        }
     }
+
+    uint8_t data[37];
+    if(hardened){
+        data[0] = 0;
+        getSecret(data+1);
+    }else{
+        memcpy(data, sec, 33);
+    }
+    intToBigEndian(index, data+33, 4);
 
     uint8_t raw[64];
     SHA512 sha;
     sha.beginHMAC(chainCode, sizeof(chainCode));
-    sha.write(data, l+4);
+    sha.write(data, 37);
     sha.endHMAC(raw);
 
     memcpy(child.chainCode, raw+32, 32);
 
-    uint16_t carry = 0;
-    uint8_t res[32] = { 0 };
-    // TODO: test it!!!
-    for(int i=31; i>=0; i--){
-        carry += raw[i];
-        carry += privateKey.secret[i];
-        res[i] = (carry & 0xFF);
-        carry >>= 8;
-    }
-    bool gtn = false; // if greater then N
-    uint8_t N[] = {
-        0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-        0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xfe,
-        0xba, 0xae, 0xdc, 0xe6, 0xaf, 0x48, 0xa0, 0x3b,
-        0xbf, 0xd2, 0x5e, 0x8c, 0xd0, 0x36, 0x41, 0x41
-    };
-    if(carry>0){
-        gtn = true;
-    }else{
-        for(int i=0; i<32; i++){
-            if(res[i] > N[i]){
-                gtn = true;
-            }
-            if(res[i] < N[i]){
-                break;
-            }
-        }
-    }
-    if(gtn == true){
-        // TODO: remove minusN, make (0xFF-N[i]) instead
-        uint8_t minusN[] = {
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
-            0x45, 0x51, 0x23, 0x19, 0x50, 0xb7, 0x5f, 0xc4,
-            0x40, 0x2d, 0xa1, 0x73, 0x2f, 0xc9, 0xbe, 0xbf
-        };
-        carry = 0;
-        for(int i=31; i>=0; i--){
-            carry += (uint16_t)minusN[i] + res[i];
-            res[i] = (0xFF & carry);
-            carry >>= 8;
-        }
-    }
-    child.privateKey = PrivateKey(res, true, privateKey.testnet);
-    memset(res, 0, 32);
+    ECScalar r(raw, 32);
+    r += *this;
+    uint8_t secret[32];
+    r.getSecret(secret);
+    child.setSecret(secret);
+    memset(secret, 0, 32);
     return child;
 }
 
 HDPrivateKey HDPrivateKey::hardenedChild(uint32_t index) const{
-    // TODO: refactor, the same used in two functions
-    HDPrivateKey child;
-
-    uint8_t sec[65] = { 0 };
-    int l = privateKey.publicKey().sec(sec, sizeof(sec));
-    uint8_t hash[20] = { 0 };
-    hash160(sec, l, hash);
-    memcpy(child.fingerprint, hash, 4);
-    child.depth = depth+1;
-    // bip44, bip49, bip84
-    child.type = type;
-    if(depth == 0){
-        switch(index){
-            case 44:
-                child.type = P2PKH;
-                break;
-            case 49:
-                child.type = P2SH_P2WPKH;
-                break;
-            case 84:
-                child.type = P2WPKH;
-                break;
-        }
-    }
-    bool testnet = privateKey.testnet;
-    if(depth == 1 && type != UNKNOWN_HD_TYPE){
-        testnet = index;
-    }
-    index += (1<<31);
-    child.childNumber = index;
-
-    uint8_t data[37] = { 0 };
-    memcpy(data+1, privateKey.secret, 32);
-    for(uint8_t i=0; i<4; i++){
-        data[36-i] = ((index >> (i*8)) & 0xFF);
-    }
-
-    uint8_t raw[64];
-    SHA512 sha;
-    sha.beginHMAC(chainCode, sizeof(chainCode));
-    sha.write(data, sizeof(data));
-    sha.endHMAC(raw);
-
-    memcpy(child.chainCode, raw+32, 32);
-
-    uint16_t carry = 0;
-    uint8_t res[32] = { 0 };
-    // TODO: test it!!!
-    for(int i=31; i>=0; i--){
-        carry += raw[i];
-        carry += privateKey.secret[i];
-        res[i] = (carry & 0xFF);
-        carry >>= 8;
-    }
-    bool gtn = false; // if greater then N
-    uint8_t N[] = {
-        0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-        0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xfe,
-        0xba, 0xae, 0xdc, 0xe6, 0xaf, 0x48, 0xa0, 0x3b,
-        0xbf, 0xd2, 0x5e, 0x8c, 0xd0, 0x36, 0x41, 0x41
-    };
-    if(carry>0){
-        gtn = true;
-    }else{
-        for(int i=0; i<32; i++){
-            if(res[i] > N[i]){
-                gtn = true;
-            }
-            if(res[i] < N[i]){
-                break;
-            }
-        }
-    }
-    if(gtn == true){
-        // TODO: remove minusN, make (0xFF-N[i]) instead
-        uint8_t minusN[] = {
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
-            0x45, 0x51, 0x23, 0x19, 0x50, 0xb7, 0x5f, 0xc4,
-            0x40, 0x2d, 0xa1, 0x73, 0x2f, 0xc9, 0xbe, 0xbf
-        };
-        carry = 0;
-        for(int i=31; i>=0; i--){
-            carry += (uint16_t)minusN[i] + res[i];
-            res[i] = (0xFF & carry);
-            carry >>= 8;
-        }
-    }
-    child.privateKey = PrivateKey(res, true, testnet);
-    memset(res, 0, 32);
-    return child;
+    return child(index, true);
 }
 
+HDPrivateKey HDPrivateKey::derive(uint32_t * index, size_t len) const{
+    HDPrivateKey pk = *this;
+    for(uint i=0; i<len; i++){
+        pk = pk.child(index[i]);
+    }
+    return pk;
+}
 // ---------------------------------------------------------------- HDPublicKey class
 
-HDPublicKey::HDPublicKey(void){
-    publicKey.compressed = true;
-    memset(chainCode, 0, 32);
-    depth = 0;
-    memset(fingerprint, 0, 4);
-    childNumber = 0;
-    testnet = false;
-    type = UNKNOWN_HD_TYPE;
-}
-HDPublicKey::HDPublicKey(const uint8_t point[64],
-                           const uint8_t chain_code[32],
-                           uint8_t key_depth,
-                           const uint8_t fingerprint_arr[4],
-                           uint32_t child_number,
-                           bool use_testnet,
-                           uint8_t key_type){
-    type = key_type;
-    testnet = use_testnet;
-    publicKey = PublicKey(point, true);
-    memcpy(chainCode, chain_code, 32);
-    depth = key_depth;
-    childNumber = child_number;
-    if(fingerprint_arr != NULL){
-        memcpy(fingerprint, fingerprint_arr, 4);
-    }else{
-        memset(fingerprint, 0, 4);
-    }
-}
-HDPublicKey::HDPublicKey(const char * xpubArr){
-    size_t xpubLen = strlen(xpubArr);
-    uint8_t arr[85] = { 0 };
-    size_t l = fromBase58Check(xpubArr, xpubLen, arr, sizeof(arr));
-    if(l == 0){
-        return; // decoding error
-    }
-    testnet = false;
-    // checking prefix
-    if(memcmp(arr, XPUB_PREFIX, 4)==0){
-        type = UNKNOWN_HD_TYPE;
-    }else if(memcmp(arr, TPUB_PREFIX, 4)==0){
-        type = UNKNOWN_HD_TYPE;
-        testnet = true;
-    }else if(memcmp(arr, YPUB_PREFIX, 4)==0){
-        type = P2SH_P2WPKH;
-    }else if(memcmp(arr, UPUB_PREFIX, 4)==0){
-        type = P2SH_P2WPKH;
-        testnet = true;
-    }else if(memcmp(arr, ZPUB_PREFIX, 4)==0){
-        type = P2WPKH;
-    }else if(memcmp(arr, VPUB_PREFIX, 4)==0){
-        type = P2WPKH;
-        testnet = true;
-    }else{
-        // unknown prefix, fail
-        return;
-    }
-    depth = arr[4];
-    memcpy(fingerprint, arr+5, 4);
-    childNumber = 0;
-    for(int i=0; i<4; i++){
-        childNumber <<= 8;
-        childNumber += arr[9+i];
-    }
-    memcpy(chainCode, arr+13, 32);
-    uint8_t sec_arr[33];
-    memcpy(sec_arr, arr+45, 33);
-    publicKey.fromSec(sec_arr);
-}
-HDPublicKey::~HDPublicKey(void) {
-    // erase chain code from memory
-    memset(chainCode, 0, 32);
-}
-bool HDPublicKey::isValid() const{
-    return publicKey.isValid();
-}
-int HDPublicKey::xpub(char * arr, size_t len) const{
-    uint8_t hex[111] = { 0 }; // TODO: real length, in xpub compressed = true
-    if(testnet){
-        switch(type){
-            case P2WPKH:
-                memcpy(hex, VPUB_PREFIX, 4);
-                break;
-            case P2SH_P2WPKH:
-                memcpy(hex, UPUB_PREFIX, 4);
-                break;
-            default:
-                memcpy(hex, TPUB_PREFIX, 4);
-        }
-    }else{
-        switch(type){
-            case P2WPKH:
-                memcpy(hex, ZPUB_PREFIX, 4);
-                break;
-            case P2SH_P2WPKH:
-                memcpy(hex, YPUB_PREFIX, 4);
-                break;
-            default:
-                memcpy(hex, XPUB_PREFIX, 4);
-        }
+size_t HDPublicKey::to_bytes(uint8_t * arr, size_t len) const{
+    uint8_t hex[78] = { 0 };
+    switch(type){
+        case P2WPKH:
+            memcpy(hex, network->zpub, 4);
+            break;
+        case P2SH_P2WPKH:
+            memcpy(hex, network->ypub, 4);
+            break;
+        default:
+            memcpy(hex, network->xpub, 4);
     }
     hex[4] = depth;
-    memcpy(hex+5, fingerprint, 4);
+    memcpy(hex+5, parentFingerprint, 4);
     for(uint8_t i=0; i<4; i++){
         hex[12-i] = ((childNumber >> (i*8)) & 0xFF);
     }
     memcpy(hex+13, chainCode, 32);
+    memcpy(hex+46, point, 32);
+    hex[45] = 0x02 + (point[63] & 0x01);
+    if(len > sizeof(hex)){
+        len = sizeof(hex);
+    }
+    memcpy(arr, hex, len);
+    return len;
+}
+size_t HDPublicKey::to_stream(SerializeStream *s, size_t offset) const{
+    uint8_t hex[78] = { 0 };
+    size_t bytes_written = 0;
+    to_bytes(hex, sizeof(hex));
+    while(s->available() && bytes_written+offset < sizeof(hex)){
+        s->write(hex[bytes_written+offset]);
+        bytes_written++;
+    }
+    return bytes_written;
+}
+size_t HDPublicKey::from_stream(ParseStream *s){
+    if(status == PARSING_FAILED){
+        return 0;
+    }
+    if(status == PARSING_DONE){
+        bytes_parsed = 0;
+    }
+    status = PARSING_INCOMPLETE;
+    size_t bytes_read = 0;
+    // reading the prefix
+    while(s->available() > 0 && bytes_parsed+bytes_read < 4){
+        prefix[bytes_parsed+bytes_read] = s->read();
+        bytes_read++;
+    }
+    if(bytes_parsed+bytes_read == 4){
+        bool found = false;
+        for(int i=0; i<networks_len; i++){
+            if(memcmp(prefix, networks[i]->xpub, 4)==0){
+                type = UNKNOWN_TYPE;
+                found = true;
+                network = networks[i];
+                break;
+            }else if(memcmp(prefix, networks[i]->ypub, 4)==0){
+                type = P2SH_P2WPKH;
+                found = true;
+                network = networks[i];
+                break;
+            }else if(memcmp(prefix, networks[i]->zpub, 4)==0){
+                type = P2WPKH;
+                found = true;
+                network = networks[i];
+                break;
+            }
+        }
+        if(!found){
+            status = PARSING_FAILED;
+            return bytes_read;
+        }
+    }
+    // depth
+    if(s->available() > 0 && bytes_parsed+bytes_read < 5){
+        depth = s->read();
+        bytes_read++;
+    }
+    // fingerprint
+    while(s->available() > 0 && bytes_parsed+bytes_read < 9){
+        parentFingerprint[bytes_parsed+bytes_read-5] = s->read();
+        bytes_read++;
+    }
+    // childnumber
+    while(s->available() > 0 && bytes_parsed+bytes_read < 13){
+        childNumber <<= 8;
+        childNumber += s->read();
+        bytes_read++;
+    }
+    // chaincode
+    while(s->available() > 0 && bytes_parsed+bytes_read < 45){
+        chainCode[bytes_parsed+bytes_read-13] = s->read();
+        bytes_read++;
+    }
+    // pubkey
+    while(s->available() > 0 && bytes_parsed+bytes_read < 78){
+        point[bytes_parsed+bytes_read-45] = s->read();
+        bytes_read++;
+    }
+    // uncompressing the pubkey
+    if(bytes_parsed+bytes_read == 78){
+        status = PARSING_DONE;
+        uint8_t arr[33];
+        memcpy(arr, point, 33);
+        uint8_t buf[65];
+        ecdsa_uncompress_pubkey(&secp256k1, arr, buf);
+        memcpy(point, buf+1, 64);
+        if(!isValid()){
+            status = PARSING_FAILED;
+        }
+    }
+    bytes_parsed += bytes_read;
+    return bytes_read;
+}
+size_t HDPublicKey::from_str(const char * xpubArr, size_t xpubLen){
+    uint8_t arr[85] = { 0 };
+    size_t l = fromBase58Check(xpubArr, xpubLen, arr, sizeof(arr));
+    if(l == 0){
+        return 0; // decoding error
+    }
+    ParseByteStream s(arr, sizeof(arr));
+    HDPublicKey::from_stream(&s);
+    return xpubLen;
+}
 
-    uint8_t sec[65] = { 0 };
-    int secLen = publicKey.sec(sec, sizeof(sec));
-    memcpy(hex+45, sec, secLen);
-    return toBase58Check(hex, 45+secLen, arr, len);
+HDPublicKey::HDPublicKey():PublicKey(){
+    memset(chainCode, 0, 32);
+    depth = 0;
+    memset(parentFingerprint, 0, 4);
+    childNumber = 0;
+    network = &DEFAULT_NETWORK;
+    type = UNKNOWN_TYPE;
+}
+HDPublicKey::HDPublicKey(const uint8_t p[64],
+                           const uint8_t chain_code[32],
+                           uint8_t key_depth,
+                           const uint8_t parent_fingerprint_arr[4],
+                           uint32_t child_number,
+                           const Network * net,
+                           ScriptType key_type){
+    reset();
+    memcpy(point, p, 64);
+    compressed = true;
+    type = key_type;
+    network = net;
+    memcpy(chainCode, chain_code, 32);
+    depth = key_depth;
+    childNumber = child_number;
+    if(parent_fingerprint_arr != NULL){
+        memcpy(parentFingerprint, parent_fingerprint_arr, 4);
+    }else{
+        memset(parentFingerprint, 0, 4);
+    }
+}
+HDPublicKey::HDPublicKey(const char * xpubArr){
+    reset();
+    network = &DEFAULT_NETWORK;
+    from_str(xpubArr, strlen(xpubArr));
+}
+HDPublicKey::~HDPublicKey(void) {
+    memset(point, 0, 64);
+    memset(chainCode, 0, 32);
+}
+int HDPublicKey::xpub(char * arr, size_t len) const{
+    uint8_t hex[78] = { 0 };
+    HDPublicKey::to_bytes(hex, sizeof(hex));
+    return toBase58Check(hex, sizeof(hex), arr, len);
 }
 int HDPublicKey::address(char * addr, size_t len) const{
     switch(type){
         case P2WPKH:
-            return publicKey.segwitAddress(addr, len, testnet);
+            return PublicKey::segwitAddress(addr, len, network);
         case P2SH_P2WPKH:
-            return publicKey.nestedSegwitAddress(addr, len, testnet);
+            return PublicKey::nestedSegwitAddress(addr, len, network);
         default:
-            return publicKey.address(addr, len, testnet);
+            return PublicKey::legacyAddress(addr, len, network);
     }
 }
 #if USE_ARDUINO_STRING
@@ -620,17 +618,12 @@ String HDPublicKey::xpub() const{
 String HDPublicKey::address() const{
     switch(type){
         case P2WPKH:
-            return publicKey.segwitAddress(testnet);
+            return PublicKey::segwitAddress(network);
         case P2SH_P2WPKH:
-            return publicKey.nestedSegwitAddress(testnet);
+            return PublicKey::nestedSegwitAddress(network);
         default:
-            return publicKey.address(testnet);
+            return PublicKey::legacyAddress(network);
     }
-}
-size_t HDPublicKey::printTo(Print &p) const{
-    char arr[114] = { 0 };
-    xpub(arr, sizeof(arr));
-    return p.print(arr);
 }
 #endif
 #if USE_STD_STRING
@@ -642,55 +635,52 @@ string HDPublicKey::xpub() const{
 string HDPublicKey::address() const{
     switch(type){
         case P2WPKH:
-            return publicKey.segwitAddress(testnet);
+            return PublicKey::segwitAddress(network);
         case P2SH_P2WPKH:
-            return publicKey.nestedSegwitAddress(testnet);
+            return PublicKey::nestedSegwitAddress(network);
         default:
-            return publicKey.address(testnet);
+            return PublicKey::legacyAddress(network);
     }
 }
 #endif
+
+void HDPublicKey::fingerprint(uint8_t arr[4]){
+    uint8_t secArr[33] = { 0 };
+    int l = sec(secArr, sizeof(secArr));
+    uint8_t hash[20] = { 0 };
+    hash160(secArr, l, hash);
+    memcpy(arr, hash, 4);
+}
+
 HDPublicKey HDPublicKey::child(uint32_t index) const{
     HDPublicKey child;
 
-    uint8_t sec[65] = { 0 };
-    int l = publicKey.sec(sec, sizeof(sec));
+    uint8_t secArr[33] = { 0 };
+    int l = sec(secArr, sizeof(secArr));
     uint8_t hash[20] = { 0 };
-    hash160(sec, l, hash);
-    memcpy(child.fingerprint, hash, 4);
+    hash160(secArr, l, hash);
+    memcpy(child.parentFingerprint, hash, 4);
     child.childNumber = index;
     child.depth = depth+1;
-    child.type = type;
 
-    uint8_t data[69];
-    memcpy(data, sec, l);
-    for(uint8_t i=0; i<4; i++){
-        data[l+3-i] = ((index >> (i*8)) & 0xFF);
-    }
+    child.type = type;
+    child.network = network;
+
+    uint8_t data[37];
+    memcpy(data, secArr, 33);
+    intToBigEndian(index, data+33, 4);
 
     uint8_t raw[64];
     SHA512 sha;
     sha.beginHMAC(chainCode, sizeof(chainCode));
-    sha.write(data, l+4);
+    sha.write(data, 37);
     sha.endHMAC(raw);
 
     memcpy(child.chainCode, raw+32, 32);
 
-    uint8_t secret[32];
-    memcpy(secret, raw, 32);
-    uint8_t p1[65] = {0};
-    ecdsa_get_public_key65(&secp256k1, secret, p1);
-    uint8_t p2[65] = { 0x04};
-    memcpy(p2+1, publicKey.point, 64);
-    curve_point pub1;
-    curve_point pub2;
-    ecdsa_read_pubkey(&secp256k1, p1, &pub1);
-    ecdsa_read_pubkey(&secp256k1, p2, &pub2);
-    point_add(&secp256k1, &pub1, &pub2);
-    bn_write_be(&pub2.x, p2 + 1);
-    bn_write_be(&pub2.y, p2 + 33);
-
-    child.publicKey = PublicKey(p2+1, true);
-    child.testnet = testnet;
+    ECScalar r(raw, 32);
+    ECPoint p = r*GeneratorPoint;
+    p += *this;
+    memcpy(child.point, p.point, 64);
     return child;
 }

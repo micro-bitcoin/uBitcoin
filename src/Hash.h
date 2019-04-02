@@ -1,36 +1,30 @@
+/** @file Hash.h
+ *  \brief All hashing functions and classes live here
+ */
 #ifndef __HASH_H__18NLNNCSJ2
 #define __HASH_H__18NLNNCSJ2
 
 #include "uBitcoin_conf.h"
-
-#if USE_ARDUINO_STRING
-#include "WString.h"
-#endif
-
+#include "BaseClasses.h"
 #include <stdint.h>
 #include <string.h>
 #include "utility/trezor/sha2.h"
 #include "utility/trezor/ripemd160.h"
 #include "utility/trezor/hmac.h"
 
-// similar to Serial or any other Stream
-class HashAlgorithm{
-protected:
-    // size_t block_size = 0;
-    // size_t digest_size = 0;
-    // uint8_t * o_pad = NULL;
-    // void clear();
+/** \brief Abstract hashing class */
+class HashAlgorithm : public SerializeStream{
 public:
+    size_t available(){ return 100; };
 	void begin(){};
-    // void beginHMAC(const uint8_t * key, size_t keySize);
-    virtual size_t write(const uint8_t * data, size_t len){ return 0; };
-    virtual size_t write(uint8_t b){ return 0; };
-    virtual size_t end(uint8_t * hash){ return 0; };
-    // size_t endHMAC(uint8_t * hash);
+    virtual size_t write(const uint8_t * data, size_t len) = 0;
+    virtual size_t write(uint8_t b) = 0;
+    virtual size_t end(uint8_t * hash) = 0;
 };
 
 /************************* RIPEMD-160 *************************/
 
+/** \brief ripemd-160 one-line hashing function */
 int rmd160(const uint8_t * data, size_t len, uint8_t hash[20]);
 int rmd160(const char * data, size_t len, uint8_t hash[20]);
 #if USE_ARDUINO_STRING
@@ -50,6 +44,7 @@ protected:
 
 /************************** SHA-256 **************************/
 
+/** \brief sha256 one-line hashing function → 32 bytes output */
 int sha256(const uint8_t * data, size_t len, uint8_t hash[32]);
 int sha256(const char * data, size_t len, uint8_t hash[32]);
 #if USE_ARDUINO_STRING
@@ -74,6 +69,7 @@ protected:
 /************************* Hash-160 **************************/
 /******************** rmd160( sha256( m ) ) ******************/
 
+/** \brief rmd160(sha256(data)) → 20 bytes output */
 int hash160(const uint8_t * data, size_t len, uint8_t hash[20]);
 int hash160(const uint8_t * data, size_t len, uint8_t hash[20]);
 int hash160(const char * data, size_t len, uint8_t hash[20]);
@@ -89,6 +85,7 @@ public:
 /********************** Double SHA-256 ***********************/
 /******************** sha256( sha256( m ) ) ******************/
 
+/** \brief sha256(sha256(data)) → 32 bytes output */
 int doubleSha(const uint8_t * data, size_t len, uint8_t hash[32]);
 int doubleSha(const char * data, size_t len, uint8_t hash[32]);
 #if USE_ARDUINO_STRING

@@ -293,7 +293,12 @@ public:
 
     HDPrivateKey child(uint32_t index, bool hardened = false) const;
     HDPrivateKey hardenedChild(uint32_t index) const;
+    /** \brief derives a child according to derivation path. Use 0x80000000 + index for hardened index. */
     HDPrivateKey derive(uint32_t * index, size_t len) const;
+    /** \brief derives a child according to derivation path. For example "m/84h/1h/0h/1/23/" for the 23rd change address for testnet with P2WPKH type (bip84). */
+    HDPrivateKey derive(const char * path) const;
+    // just to make sure it is compressed
+    PublicKey publicKey() const{ PublicKey p = pubKey; p.compressed = true; return p; };
 };
 
 /**
@@ -351,6 +356,10 @@ public:
      *         You can derive only normal children (not hardened) from the public key. 
      */
     HDPublicKey child(uint32_t index) const;
+    /** \brief derives a child according to derivation path. */
+    HDPublicKey derive(uint32_t * index, size_t len) const;
+    /** \brief derives a child according to derivation path. For example "m/1/23/" for the 23rd change address. */
+    HDPublicKey derive(const char * path) const;
 };
 
 /**

@@ -16,7 +16,6 @@ using std::string;
 
 // ---------------------------------------------------------------- HDPrivateKey class
 
-// TODO: make friends with PrivateKey to get secret or inherit from it
 void HDPrivateKey::init(){
     reset();
     memset(chainCode, 0, 32);
@@ -25,6 +24,7 @@ void HDPrivateKey::init(){
     childNumber = 0;
     type = UNKNOWN_TYPE;
     status = PARSING_DONE;
+    pubKey.compressed = true;
 }
 HDPrivateKey::HDPrivateKey(void):PrivateKey(){
     init();
@@ -52,15 +52,18 @@ HDPrivateKey::HDPrivateKey(const char * xprvArr){
     from_str(xprvArr, strlen(xprvArr));
 }
 HDPrivateKey::HDPrivateKey(const char * mnemonic, size_t mnemonicSize, const char * password, size_t passwordSize, const Network * net, void (*progress_callback)(float)){
+    init();
     fromMnemonic(mnemonic, mnemonicSize, password, passwordSize, net, progress_callback);
 }
 #if USE_STD_STRING
 HDPrivateKey::HDPrivateKey(std::string mnemonic, std::string password, const Network * net, void (*progress_callback)(float)){
+    init();
     fromMnemonic(mnemonic, password, net, progress_callback);
 }
 #endif
 #if USE_ARDUINO_STRING
 HDPrivateKey::HDPrivateKey(String mnemonic, String password, const Network * net, void (*progress_callback)(float)){
+    init();
     fromMnemonic(mnemonic, password, net, progress_callback);
 }
 #endif
@@ -188,6 +191,7 @@ size_t HDPrivateKey::from_stream(ParseStream *s){
         bn_mod(&n, &secp256k1.order);
         bn_write_be(&n, num);
         pubKey = *this * GeneratorPoint;
+        pubKey.compressed = true;
     }
     bytes_parsed += bytes_read;
     return bytes_read;
@@ -216,6 +220,7 @@ int HDPrivateKey::fromSeed(const uint8_t * seed, size_t seedSize, const Network 
     network = net;
     memcpy(chainCode, raw+32, 32);
     pubKey = *this * GeneratorPoint;
+    pubKey.compressed = true;
     return 1;
 }
 // int HDPrivateKey::fromSeed(const uint8_t seed[64], const Network * net){
@@ -354,7 +359,8 @@ HDPrivateKey HDPrivateKey::child(uint32_t index, bool hardened) const{
     HDPrivateKey child;
 
     uint8_t sec[33] = { 0 };
-    int l = publicKey().sec(sec, sizeof(sec));
+    PublicKey p = publicKey();
+    int l = p.sec(sec, sizeof(sec));
     uint8_t hash[20] = { 0 };
     hash160(sec, l, hash);
     memcpy(child.parentFingerprint, hash, 4);
@@ -426,6 +432,50 @@ HDPrivateKey HDPrivateKey::derive(uint32_t * index, size_t len) const{
         pk = pk.child(index[i]);
     }
     return pk;
+}
+HDPrivateKey HDPrivateKey::derive(const char * path) const{
+    static const char VALID_CHARS[] = "0123456789/'h";
+    uint len = strlen(path);
+    const char * cur = path;
+    if(path[0] == 'm'){ // remove leading "m/"
+        cur+=2;
+        len-=2;
+    }
+    if(cur[len-1] == '/'){ // remove trailing "/"
+        len--;
+    }
+    HDPrivateKey pk;
+    uint derivationLen = 1;
+    // checking if all chars are valid and counting derivation length
+    for(uint i=0; i<len; i++){
+        const char * pch = strchr(VALID_CHARS, cur[i]);
+        if(pch == NULL){ // wrong character
+            return pk;
+        }
+        if(cur[i] == '/'){
+            derivationLen++;
+        }
+    }
+    uint32_t * derivation = (uint32_t *)calloc(derivationLen, sizeof(uint32_t));
+    uint current = 0;
+    for(uint i=0; i<len; i++){
+        if(cur[i] == '/'){ // next
+            current++;
+            continue;
+        }
+        const char * pch = strchr(VALID_CHARS, cur[i]);
+        uint32_t val = pch-VALID_CHARS;
+        if(derivation[current] >= 0x80000000){ // can't have anything after hardened
+            free(derivation);
+            return pk;
+        }
+        if(val < 10){
+            derivation[current] = derivation[current]*10 + val;
+        }else{ // h or ' -> hardened
+            derivation[current] += 0x80000000;
+        }
+    }
+    return derive(derivation, derivationLen);
 }
 // ---------------------------------------------------------------- HDPublicKey class
 
@@ -557,6 +607,7 @@ size_t HDPublicKey::from_str(const char * xpubArr, size_t xpubLen){
 }
 
 HDPublicKey::HDPublicKey():PublicKey(){
+    compressed = true;
     memset(chainCode, 0, 32);
     depth = 0;
     memset(parentFingerprint, 0, 4);
@@ -682,5 +733,54 @@ HDPublicKey HDPublicKey::child(uint32_t index) const{
     ECPoint p = r*GeneratorPoint;
     p += *this;
     memcpy(child.point, p.point, 64);
+    child.compressed = true;
     return child;
 }
+HDPublicKey HDPublicKey::derive(uint32_t * index, size_t len) const{
+    HDPublicKey pk = *this;
+    for(uint i=0; i<len; i++){
+        pk = pk.child(index[i]);
+    }
+    return pk;
+}
+HDPublicKey HDPublicKey::derive(const char * path) const{
+    static const char VALID_CHARS[] = "0123456789/";
+    uint len = strlen(path);
+    const char * cur = path;
+    if(path[0] == 'm'){ // remove leading "m/"
+        cur+=2;
+        len-=2;
+    }
+    if(cur[len-1] == '/'){ // remove trailing "/"
+        len--;
+    }
+    HDPublicKey pk;
+    uint derivationLen = 1;
+    // checking if all chars are valid and counting derivation length
+    for(uint i=0; i<len; i++){
+        const char * pch = strchr(VALID_CHARS, cur[i]);
+        if(pch == NULL){ // wrong character
+            return pk;
+        }
+        if(cur[i] == '/'){
+            derivationLen++;
+        }
+    }
+    uint32_t * derivation = (uint32_t *)calloc(derivationLen, sizeof(uint32_t));
+    uint current = 0;
+    for(uint i=0; i<len; i++){
+        if(cur[i] == '/'){ // next
+            if(derivation[current] >= 0x80000000){ // can't be hardened
+                free(derivation);
+                return pk;
+            }
+            current++;
+            continue;
+        }
+        const char * pch = strchr(VALID_CHARS, cur[i]);
+        uint32_t val = pch-VALID_CHARS;
+        derivation[current] = derivation[current]*10 + val;
+    }
+    return derive(derivation, derivationLen);
+}
+

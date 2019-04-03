@@ -341,7 +341,7 @@ int HDPrivateKey::xpub(char * arr, size_t len) const{
 }
 
 void HDPrivateKey::fingerprint(uint8_t arr[4]) const{
-    uint8_t secArr[33] = { 0 };
+    uint8_t secArr[65] = { 0 };
     int l = publicKey().sec(secArr, sizeof(secArr));
     uint8_t hash[20] = { 0 };
     hash160(secArr, l, hash);
@@ -358,7 +358,7 @@ HDPrivateKey HDPrivateKey::child(uint32_t index, bool hardened) const{
     }
     HDPrivateKey child;
 
-    uint8_t sec[33] = { 0 };
+    uint8_t sec[65] = { 0 };
     PublicKey p = publicKey();
     int l = p.sec(sec, sizeof(sec));
     uint8_t hash[20] = { 0 };
@@ -696,7 +696,7 @@ string HDPublicKey::address() const{
 #endif
 
 void HDPublicKey::fingerprint(uint8_t arr[4]){
-    uint8_t secArr[33] = { 0 };
+    uint8_t secArr[65] = { 0 };
     int l = sec(secArr, sizeof(secArr));
     uint8_t hash[20] = { 0 };
     hash160(secArr, l, hash);
@@ -706,7 +706,7 @@ void HDPublicKey::fingerprint(uint8_t arr[4]){
 HDPublicKey HDPublicKey::child(uint32_t index) const{
     HDPublicKey child;
 
-    uint8_t secArr[33] = { 0 };
+    uint8_t secArr[65] = { 0 };
     int l = sec(secArr, sizeof(secArr));
     uint8_t hash[20] = { 0 };
     hash160(secArr, l, hash);

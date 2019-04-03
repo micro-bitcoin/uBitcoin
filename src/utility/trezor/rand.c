@@ -24,7 +24,7 @@
 #include "rand.h"
 #include "sha2.h"
 
-#ifndef RAND_PLATFORM_INDEPENDENT
+// #ifndef RAND_PLATFORM_INDEPENDENT
 
 static uint32_t seed = 0;
 static uint8_t hash[32];
@@ -54,8 +54,7 @@ void random_reseed(const uint32_t value)
 	seed = value;
 }
 
-uint32_t random32(void)
-{
+uint32_t __attribute__((weak)) random32(void){
 	if(seed == 0){
 		init_ram_seed();
 	}
@@ -69,7 +68,7 @@ uint32_t random32(void)
 	return results[1];
 }
 
-#endif /* RAND_PLATFORM_INDEPENDENT */
+// #endif /* RAND_PLATFORM_INDEPENDENT */
 
 //
 // The following code is platform independent

@@ -8,6 +8,7 @@
 #include "BaseClasses.h"
 #include "BitcoinCurve.h"
 #include "Conversion.h"
+#include "utility/trezor/rand.h"
 #include <stdint.h>
 #include <string.h>
 
@@ -114,6 +115,7 @@ public:
     PublicKey(const uint8_t pubkeyArr[64], bool use_compressed) : ECPoint(pubkeyArr, use_compressed){};
     PublicKey(const uint8_t * secArr) : ECPoint(secArr){};
     explicit PublicKey(const char * secHex) : ECPoint(secHex){};
+    // do I need this?
     PublicKey(ECPoint p){ reset(); compressed=p.compressed; memcpy(point, p.point, 64); };
     /**
      *  \brief Populated `addr` with legacy Pay-To-Pubkey-Hash address (P2PKH, `1...` for mainnet)

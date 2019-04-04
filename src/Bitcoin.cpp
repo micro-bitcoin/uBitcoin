@@ -54,6 +54,9 @@ const char * generateMnemonic(const char * entropy_string){
     sha256(entropy_string, strlen(entropy_string), hash);
     return mnemonic_from_data(hash, sizeof(hash));
 }
+bool checkMnemonic(const char * mnemonic){
+    return mnemonic_check(mnemonic);
+}
 
 // ---------------------------------------------------------------- Signature class
 

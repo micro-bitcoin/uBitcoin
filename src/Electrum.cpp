@@ -172,7 +172,7 @@ uint64_t ElectrumTx::fee() const{
     }
     uint64_t outputs_amount = 0;
     for(unsigned int i=0; i < tx.outputsNumber; i++){
-        inputs_amount += tx.txOuts[i].amount;
+        outputs_amount += tx.txOuts[i].amount;
     }
     if(inputs_amount < outputs_amount){
         return 0;

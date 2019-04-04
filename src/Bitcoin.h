@@ -99,6 +99,7 @@ class TxIn;
 const char * generateMnemonic(int strength = 128);
 const char * generateMnemonic(const uint8_t * entropy_data, size_t dataLen);
 const char * generateMnemonic(const char * entropy_string);
+bool checkMnemonic(const char * mnemonic);
 
 /**
  *  PublicKey class.

@@ -542,7 +542,7 @@ size_t toBase64(const uint8_t * array, size_t arraySize, char * output, size_t o
     return 4*cur;
 }
 size_t fromBase64Length(const char * array, size_t arraySize){
-    size_t v = arraySize * 3 / 4;
+    size_t v = (arraySize / 4) * 3;
     if(array[arraySize-1] == '='){
         v--;
     }
@@ -554,13 +554,16 @@ size_t fromBase64Length(const char * array, size_t arraySize){
 size_t fromBase64(const char * encoded, size_t encodedSize, uint8_t * output, size_t outputSize){
     size_t cur = 0;
     memset(output, 0, outputSize);
-    while(cur < encodedSize/4){
-        if(encodedSize < cur*4+4){
+    if(outputSize < fromBase64Length(encoded, encodedSize)){
+        return 0;
+    }
+    while(cur*4 < encodedSize){
+        if(cur*4+3 >= encodedSize){
             memset(output, 0, outputSize);
             return 0;
         }
         uint32_t val = 0;
-        for(uint i=0; i<4; i++){
+        for(size_t i=0; i<4; i++){
             const char * pch = strchr(BASE64_CHARS, encoded[cur*4+i]);
             if(pch!=NULL){
                 val = (val << 6) + ((pch - BASE64_CHARS) & 0x3F);
@@ -581,7 +584,7 @@ size_t fromBase64(const char * encoded, size_t encodedSize, uint8_t * output, si
                             memset(output, 0, outputSize);
                             return 0;
                         }
-                        intToBigEndian(val, output+3*cur, 1);
+                        output[3*cur] = (val & 0xFF);
                         return 3*cur + 1;
                     }
                 }

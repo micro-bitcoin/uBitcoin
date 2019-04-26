@@ -39,7 +39,7 @@ size_t descriptorChecksum(const char * span, size_t spanLen, char * output, size
     int cls = 0;
     int clscount = 0;
     // size_t len = strlen(span);
-    for(uint i=0; i<spanLen; i++){
+    for(size_t i=0; i<spanLen; i++){
     	char ch = span[i];
         const char * pch = strchr(INPUT_CHARSET, ch);
         if(pch==NULL){ // char not in the alphabet
@@ -71,9 +71,9 @@ size_t PSBT::from_stream(ParseStream *s){
     if(status == PARSING_DONE){
 		// free memory
 		if(tx.inputsNumber > 0){
-			for(uint i=0; i<tx.inputsNumber; i++){
+			for(size_t i=0; i<tx.inputsNumber; i++){
 				if(txInsMeta[i].derivationsLen > 0){
-					for(uint j=0; j<txInsMeta[i].derivationsLen; j++){
+					for(size_t j=0; j<txInsMeta[i].derivationsLen; j++){
 						if(txInsMeta[i].derivations[j].derivationLen > 0){
 							delete [] txInsMeta[i].derivations[j].derivation;
 						}
@@ -87,9 +87,9 @@ size_t PSBT::from_stream(ParseStream *s){
 			delete [] txInsMeta;
 		}
 		if(tx.outputsNumber > 0){
-			for(uint i=0; i<tx.outputsNumber; i++){
+			for(size_t i=0; i<tx.outputsNumber; i++){
 				if(txOutsMeta[i].derivationsLen > 0){
-					for(uint j=0; j<txOutsMeta[i].derivationsLen; j++){
+					for(size_t j=0; j<txOutsMeta[i].derivationsLen; j++){
 						if(txOutsMeta[i].derivations[j].derivationLen > 0){
 							delete [] txOutsMeta[i].derivations[j].derivation;
 						}
@@ -161,12 +161,12 @@ size_t PSBT::from_stream(ParseStream *s){
 	        return bytes_read;
     	}
 		txInsMeta = new PSBTInputMetadata[tx.inputsNumber];
-		for(uint i=0; i<tx.inputsNumber; i++){
+		for(size_t i=0; i<tx.inputsNumber; i++){
 			txInsMeta[i].derivationsLen = 0;
 			txInsMeta[i].signaturesLen = 0;
 		}
 		txOutsMeta = new PSBTOutputMetadata[tx.outputsNumber];
-		for(uint i=0; i<tx.outputsNumber; i++){
+		for(size_t i=0; i<tx.outputsNumber; i++){
 			txOutsMeta[i].derivationsLen = 0;
 		}
     	last_key_pos += key.length()+value.length();
@@ -296,7 +296,7 @@ int PSBT::add(uint8_t section, const Script * k, const Script * v){
 					PSBTPartialSignature * p = txInsMeta[input].signatures;
 					txInsMeta[input].signaturesLen ++;
 					txInsMeta[input].signatures = new PSBTPartialSignature[txInsMeta[input].signaturesLen];
-					for(uint i=0; i<txInsMeta[input].signaturesLen-1; i++){
+					for(size_t i=0; i<txInsMeta[input].signaturesLen-1; i++){
 						txInsMeta[input].signatures[i] = p[i];
 					}
 					delete [] p;
@@ -342,7 +342,7 @@ int PSBT::add(uint8_t section, const Script * k, const Script * v){
 				memcpy(der.fingerprint, val_arr+lenVarInt(v->length()), 4);
 				der.derivationLen = (v->length()-lenVarInt(v->length())-4)/sizeof(uint32_t);
 				der.derivation = (uint32_t *)calloc(der.derivationLen, sizeof(uint32_t));
-				for(uint i=0; i<der.derivationLen; i++){
+				for(size_t i=0; i<der.derivationLen; i++){
 					der.derivation[i] = littleEndianToInt(val_arr+lenVarInt(v->length())+4*(i+1),4);
 				}
 				if(txInsMeta[input].derivationsLen == 0){
@@ -352,7 +352,7 @@ int PSBT::add(uint8_t section, const Script * k, const Script * v){
 					PSBTDerivation * p = txInsMeta[input].derivations;
 					txInsMeta[input].derivationsLen ++;
 					txInsMeta[input].derivations = new PSBTDerivation[txInsMeta[input].derivationsLen];
-					for(uint i=0; i<txInsMeta[input].derivationsLen-1; i++){
+					for(size_t i=0; i<txInsMeta[input].derivationsLen-1; i++){
 						txInsMeta[input].derivations[i] = p[i];
 					}
 					delete [] p;
@@ -404,7 +404,7 @@ int PSBT::add(uint8_t section, const Script * k, const Script * v){
 				memcpy(der.fingerprint, val_arr+lenVarInt(v->length()), 4);
 				der.derivationLen = (v->length()-lenVarInt(v->length())-4)/sizeof(uint32_t);
 				der.derivation = (uint32_t *)calloc(der.derivationLen, sizeof(uint32_t));
-				for(uint i=0; i<der.derivationLen; i++){
+				for(size_t i=0; i<der.derivationLen; i++){
 					der.derivation[i] = littleEndianToInt(val_arr+lenVarInt(v->length())+4*(i+1),4);
 				}
 				if(txOutsMeta[output].derivationsLen == 0){
@@ -455,7 +455,7 @@ size_t PSBT::to_stream(SerializeStream *s, size_t offset) const{
 	while(s->available() && section < sections_number){
 		if(section > 0 && section < tx.inputsNumber+1){
 			uint8_t input = section-1;
-			for(uint i=0; i<txInsMeta[input].signaturesLen; i++){
+			for(size_t i=0; i<txInsMeta[input].signaturesLen; i++){
 				uint8_t key_arr[67];
 				key_arr[1] = 0x02; // PSBT_IN_PARTIAL_SIG
 				uint8_t key_len = 1+txInsMeta[input].signatures[i].pubkey.serialize(key_arr+2, 65);
@@ -487,8 +487,8 @@ size_t PSBT::to_stream(SerializeStream *s, size_t offset) const{
 size_t PSBT::length() const{
 	uint8_t sections_number = 1 + tx.inputsNumber + tx.outputsNumber;
 	size_t len = 7 + lenVarInt(tx.length()) + tx.length() + sections_number;
-	for(uint input=0; input<tx.inputsNumber; input++){
-		for(uint i=0; i<txInsMeta[input].signaturesLen; i++){
+	for(size_t input=0; input<tx.inputsNumber; input++){
+		for(size_t i=0; i<txInsMeta[input].signaturesLen; i++){
 			len += 2+txInsMeta[input].signatures[i].pubkey.length();
 			len += 2+txInsMeta[input].signatures[i].signature.length();
 		}
@@ -501,23 +501,23 @@ PSBT::PSBT(PSBT const &other){
 	status = other.status;
 	txInsMeta = new PSBTInputMetadata[tx.inputsNumber];
 	txOutsMeta = new PSBTOutputMetadata[tx.outputsNumber];
-	for(uint i=0; i<tx.inputsNumber; i++){
+	for(size_t i=0; i<tx.inputsNumber; i++){
 		txInsMeta[i] = other.txInsMeta[i];
 		txInsMeta[i].derivations = new PSBTDerivation[txInsMeta[i].derivationsLen];
-		for(uint j=0; j<txInsMeta[i].derivationsLen; j++){
+		for(size_t j=0; j<txInsMeta[i].derivationsLen; j++){
 			txInsMeta[i].derivations[j] = other.txInsMeta[i].derivations[j];
 			txInsMeta[i].derivations[j].derivation = new uint32_t[txInsMeta[i].derivations[j].derivationLen];
 			memcpy(txInsMeta[i].derivations[j].derivation, other.txInsMeta[i].derivations[j].derivation, txInsMeta[i].derivations[j].derivationLen*sizeof(uint32_t));
 		}
 		txInsMeta[i].signatures = new PSBTPartialSignature[txInsMeta[i].signaturesLen];
-		for(uint j=0; j<txInsMeta[i].signaturesLen; j++){
+		for(size_t j=0; j<txInsMeta[i].signaturesLen; j++){
 			txInsMeta[i].signatures[j] = other.txInsMeta[i].signatures[j];
 		}
 	}
-	for(uint i=0; i<tx.outputsNumber; i++){
+	for(size_t i=0; i<tx.outputsNumber; i++){
 		txOutsMeta[i] = other.txOutsMeta[i];
 		txOutsMeta[i].derivations = new PSBTDerivation[txOutsMeta[i].derivationsLen];
-		for(uint j=0; j<txOutsMeta[i].derivationsLen; j++){
+		for(size_t j=0; j<txOutsMeta[i].derivationsLen; j++){
 			txOutsMeta[i].derivations[j] = other.txOutsMeta[i].derivations[j];
 			txOutsMeta[i].derivations[j].derivation = new uint32_t[txOutsMeta[i].derivations[j].derivationLen];
 			memcpy(txOutsMeta[i].derivations[j].derivation, other.txOutsMeta[i].derivations[j].derivation, txOutsMeta[i].derivations[j].derivationLen*sizeof(uint32_t));
@@ -528,9 +528,9 @@ PSBT::PSBT(PSBT const &other){
 PSBT::~PSBT(){
 	// free memory
 	if(tx.inputsNumber > 0){
-		for(uint i=0; i<tx.inputsNumber; i++){
+		for(size_t i=0; i<tx.inputsNumber; i++){
 			if(txInsMeta[i].derivationsLen > 0){
-				for(uint j=0; j<txInsMeta[i].derivationsLen; j++){
+				for(size_t j=0; j<txInsMeta[i].derivationsLen; j++){
 					if(txInsMeta[i].derivations[j].derivationLen > 0){
 						delete [] txInsMeta[i].derivations[j].derivation;
 					}
@@ -544,9 +544,9 @@ PSBT::~PSBT(){
 		delete [] txInsMeta;
 	}
 	if(tx.outputsNumber > 0){
-		for(uint i=0; i<tx.outputsNumber; i++){
+		for(size_t i=0; i<tx.outputsNumber; i++){
 			if(txOutsMeta[i].derivationsLen > 0){
-				for(uint j=0; j<txOutsMeta[i].derivationsLen; j++){
+				for(size_t j=0; j<txOutsMeta[i].derivationsLen; j++){
 					if(txOutsMeta[i].derivations[j].derivationLen > 0){
 						delete [] txOutsMeta[i].derivations[j].derivation;
 					}
@@ -566,15 +566,15 @@ uint8_t PSBT::sign(const HDPrivateKey root){
 	uint32_t * first_derivation = NULL;
 	uint8_t first_derivation_len = 0;
 	HDPrivateKey account;
-	for(uint i=0; i<tx.inputsNumber; i++){
+	for(size_t i=0; i<tx.inputsNumber; i++){
 		if(txInsMeta[i].derivationsLen > 0){
-			for(uint j=0; j<txInsMeta[i].derivationsLen; j++){
+			for(size_t j=0; j<txInsMeta[i].derivationsLen; j++){
 				if(memcmp(fingerprint, txInsMeta[i].derivations[j].fingerprint, 4) == 0){
 					// caching account key here
 					if(first_derivation == NULL){
 						first_derivation = txInsMeta[i].derivations[j].derivation; 
 						first_derivation_len = 0;
-						for(uint k=0; k < txInsMeta[i].derivations[j].derivationLen; k++){
+						for(size_t k=0; k < txInsMeta[i].derivations[j].derivationLen; k++){
 							if(txInsMeta[i].derivations[j].derivation[k] >= 0x80000000){
 								first_derivation_len++;
 							}else{
@@ -641,13 +641,13 @@ uint8_t PSBT::sign(const HDPrivateKey root){
 uint64_t PSBT::fee() const{
 	uint64_t input_amount = 0;
 	uint64_t output_amount = 0;
-	for(uint i=0; i<tx.inputsNumber; i++){
+	for(size_t i=0; i<tx.inputsNumber; i++){
 		if(txInsMeta[i].txOut.amount == 0){
 			return 0;
 		}
 		input_amount += txInsMeta[i].txOut.amount;
 	}
-	for(uint i=0; i<tx.outputsNumber; i++){
+	for(size_t i=0; i<tx.outputsNumber; i++){
 		output_amount += tx.txOuts[i].amount;
 	}
 	if(output_amount > input_amount){
@@ -659,9 +659,9 @@ uint64_t PSBT::fee() const{
 PSBT& PSBT::operator=(PSBT const &other){
 	// free memory
 	if(tx.inputsNumber > 0){
-		for(uint i=0; i<tx.inputsNumber; i++){
+		for(size_t i=0; i<tx.inputsNumber; i++){
 			if(txInsMeta[i].derivationsLen > 0){
-				for(uint j=0; j<txInsMeta[i].derivationsLen; j++){
+				for(size_t j=0; j<txInsMeta[i].derivationsLen; j++){
 					if(txInsMeta[i].derivations[j].derivationLen > 0){
 						delete [] txInsMeta[i].derivations[j].derivation;
 					}
@@ -675,9 +675,9 @@ PSBT& PSBT::operator=(PSBT const &other){
 		delete [] txInsMeta;
 	}
 	if(tx.outputsNumber > 0){
-		for(uint i=0; i<tx.outputsNumber; i++){
+		for(size_t i=0; i<tx.outputsNumber; i++){
 			if(txOutsMeta[i].derivationsLen > 0){
-				for(uint j=0; j<txOutsMeta[i].derivationsLen; j++){
+				for(size_t j=0; j<txOutsMeta[i].derivationsLen; j++){
 					if(txOutsMeta[i].derivations[j].derivationLen > 0){
 						delete [] txOutsMeta[i].derivations[j].derivation;
 					}
@@ -692,11 +692,11 @@ PSBT& PSBT::operator=(PSBT const &other){
 	status = other.status;
 	if(tx.inputsNumber > 0){
 		txInsMeta = new PSBTInputMetadata[tx.inputsNumber];
-		for(uint i=0; i<tx.inputsNumber; i++){
+		for(size_t i=0; i<tx.inputsNumber; i++){
 			txInsMeta[i] = other.txInsMeta[i];
 			if(txInsMeta[i].derivationsLen > 0){
 				txInsMeta[i].derivations = new PSBTDerivation[txInsMeta[i].derivationsLen];
-				for(uint j=0; j<txInsMeta[i].derivationsLen; j++){
+				for(size_t j=0; j<txInsMeta[i].derivationsLen; j++){
 					txInsMeta[i].derivations[j] = other.txInsMeta[i].derivations[j];
 					txInsMeta[i].derivations[j].derivation = new uint32_t[txInsMeta[i].derivations[j].derivationLen];
 					memcpy(txInsMeta[i].derivations[j].derivation, other.txInsMeta[i].derivations[j].derivation, txInsMeta[i].derivations[j].derivationLen*sizeof(uint32_t));
@@ -704,7 +704,7 @@ PSBT& PSBT::operator=(PSBT const &other){
 			}
 			if(txInsMeta[i].signaturesLen > 0){
 				txInsMeta[i].signatures = new PSBTPartialSignature[txInsMeta[i].signaturesLen];
-				for(uint j=0; j<txInsMeta[i].signaturesLen; j++){
+				for(size_t j=0; j<txInsMeta[i].signaturesLen; j++){
 					txInsMeta[i].signatures[j] = other.txInsMeta[i].signatures[j];
 				}
 			}
@@ -712,10 +712,10 @@ PSBT& PSBT::operator=(PSBT const &other){
 	}
 	if(tx.outputsNumber > 0){
 		txOutsMeta = new PSBTOutputMetadata[tx.outputsNumber];
-		for(uint i=0; i<tx.outputsNumber; i++){
+		for(size_t i=0; i<tx.outputsNumber; i++){
 			txOutsMeta[i] = other.txOutsMeta[i];
 			txOutsMeta[i].derivations = new PSBTDerivation[txOutsMeta[i].derivationsLen];
-			for(uint j=0; j<txOutsMeta[i].derivationsLen; j++){
+			for(size_t j=0; j<txOutsMeta[i].derivationsLen; j++){
 				txOutsMeta[i].derivations[j] = other.txOutsMeta[i].derivations[j];
 				txOutsMeta[i].derivations[j].derivation = new uint32_t[txOutsMeta[i].derivations[j].derivationLen];
 				memcpy(txOutsMeta[i].derivations[j].derivation, other.txOutsMeta[i].derivations[j].derivation, txOutsMeta[i].derivations[j].derivationLen*sizeof(uint32_t));

@@ -428,14 +428,14 @@ HDPrivateKey HDPrivateKey::hardenedChild(uint32_t index) const{
 
 HDPrivateKey HDPrivateKey::derive(uint32_t * index, size_t len) const{
     HDPrivateKey pk = *this;
-    for(uint i=0; i<len; i++){
+    for(size_t i=0; i<len; i++){
         pk = pk.child(index[i]);
     }
     return pk;
 }
 HDPrivateKey HDPrivateKey::derive(const char * path) const{
     static const char VALID_CHARS[] = "0123456789/'h";
-    uint len = strlen(path);
+    size_t len = strlen(path);
     const char * cur = path;
     if(path[0] == 'm'){ // remove leading "m/"
         cur+=2;
@@ -445,9 +445,9 @@ HDPrivateKey HDPrivateKey::derive(const char * path) const{
         len--;
     }
     HDPrivateKey pk;
-    uint derivationLen = 1;
+    size_t derivationLen = 1;
     // checking if all chars are valid and counting derivation length
-    for(uint i=0; i<len; i++){
+    for(size_t i=0; i<len; i++){
         const char * pch = strchr(VALID_CHARS, cur[i]);
         if(pch == NULL){ // wrong character
             return pk;
@@ -457,8 +457,8 @@ HDPrivateKey HDPrivateKey::derive(const char * path) const{
         }
     }
     uint32_t * derivation = (uint32_t *)calloc(derivationLen, sizeof(uint32_t));
-    uint current = 0;
-    for(uint i=0; i<len; i++){
+    size_t current = 0;
+    for(size_t i=0; i<len; i++){
         if(cur[i] == '/'){ // next
             current++;
             continue;
@@ -738,14 +738,14 @@ HDPublicKey HDPublicKey::child(uint32_t index) const{
 }
 HDPublicKey HDPublicKey::derive(uint32_t * index, size_t len) const{
     HDPublicKey pk = *this;
-    for(uint i=0; i<len; i++){
+    for(size_t i=0; i<len; i++){
         pk = pk.child(index[i]);
     }
     return pk;
 }
 HDPublicKey HDPublicKey::derive(const char * path) const{
     static const char VALID_CHARS[] = "0123456789/";
-    uint len = strlen(path);
+    size_t len = strlen(path);
     const char * cur = path;
     if(path[0] == 'm'){ // remove leading "m/"
         cur+=2;
@@ -755,9 +755,9 @@ HDPublicKey HDPublicKey::derive(const char * path) const{
         len--;
     }
     HDPublicKey pk;
-    uint derivationLen = 1;
+    size_t derivationLen = 1;
     // checking if all chars are valid and counting derivation length
-    for(uint i=0; i<len; i++){
+    for(size_t i=0; i<len; i++){
         const char * pch = strchr(VALID_CHARS, cur[i]);
         if(pch == NULL){ // wrong character
             return pk;
@@ -767,8 +767,8 @@ HDPublicKey HDPublicKey::derive(const char * path) const{
         }
     }
     uint32_t * derivation = (uint32_t *)calloc(derivationLen, sizeof(uint32_t));
-    uint current = 0;
-    for(uint i=0; i<len; i++){
+    size_t current = 0;
+    for(size_t i=0; i<len; i++){
         if(cur[i] == '/'){ // next
             if(derivation[current] >= 0x80000000){ // can't be hardened
                 free(derivation);

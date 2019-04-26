@@ -7,16 +7,19 @@
 #define MAX_SCRIPT_SIZE 10000
 
 //------------------------------------------------------------ Script
-Script::Script(void){
+void Script::init(){
     reset();
     scriptLen = 0;
-    scriptArray = NULL;
+    scriptArray = NULL;    
+}
+Script::Script(void){
+    init();
 }
 Script::Script(const uint8_t * buffer, size_t len){
     reset();
     push(buffer, len);
 }
-Script::Script(const char * address){
+void Script::fromAddress(const char * address){
     reset();
     scriptLen = 0;
     scriptArray = NULL;
@@ -363,7 +366,8 @@ Script &Script::operator=(const Script &other){
     }
     return *this;
 };
-Script::Script(const Script &other):Script(){
+Script::Script(const Script &other){
+    init();
     if(other.scriptLen > 0){
         scriptLen = other.scriptLen;
         scriptArray = (uint8_t *) calloc( scriptLen, sizeof(uint8_t));
@@ -380,11 +384,14 @@ void Witness::clear(){
         witnessLen = 0;
     }
 }
-Witness::Witness(void){
+void Witness::init(){
     numElements = 0;
     witnessLen = 0;
     reset();
     clear();
+}
+Witness::Witness(void){
+    init();
 }
 Witness::Witness(const uint8_t * buffer, size_t len){
     numElements = 0;
@@ -554,7 +561,8 @@ size_t Witness::push(const Script sc){
     free(tmp);
     return witnessLen;
 }
-Witness::Witness(const Witness &other):Witness(){
+Witness::Witness(const Witness &other){
+    init();
     numElements = other.numElements;
     if(other.witnessLen > 0){
         witnessLen = other.witnessLen;

@@ -6,25 +6,34 @@
 #include "utility/trezor/sha2.h"
 
 //-------------------------------------------------------------------------------------- Transaction Input
-
-TxIn::TxIn(void){
+void TxIn::init(){
     outputIndex = 0;
     sequence = 0;
     memset(hash, 0, 32);
     status = PARSING_DONE;
     bytes_parsed = 0;
 }
-TxIn::TxIn(const uint8_t prev_id[32], uint32_t prev_index, uint32_t sequence_number):TxIn(){
+TxIn::TxIn(void){
+    init();
+}
+TxIn::TxIn(const uint8_t prev_id[32], uint32_t prev_index, uint32_t sequence_number){
+    init();
     outputIndex = prev_index;
     sequence = sequence_number;
     for(int i=0; i<32; i++){
         hash[i] = prev_id[31-i];
     }
 }
-TxIn::TxIn(const uint8_t prev_id[32], uint32_t prev_index, const Script script, uint32_t sequence_number):TxIn(prev_id, prev_index, sequence_number){
+TxIn::TxIn(const uint8_t prev_id[32], uint32_t prev_index, const Script script, uint32_t sequence_number){
+    outputIndex = prev_index;
+    sequence = sequence_number;
+    for(int i=0; i<32; i++){
+        hash[i] = prev_id[31-i];
+    }
     scriptSig = script;
 }
-TxIn::TxIn(const char * prev_id, uint32_t prev_index, uint32_t sequence_number):TxIn(){
+TxIn::TxIn(const char * prev_id, uint32_t prev_index, uint32_t sequence_number){
+    init();
     memset(hash, 0, 32);
     if(strlen(prev_id) < 64){
         return;
@@ -37,9 +46,16 @@ TxIn::TxIn(const char * prev_id, uint32_t prev_index, uint32_t sequence_number):
         hash[i] = arr[31-i];
     }
 }
-TxIn::TxIn(const char * prev_id, uint32_t prev_index, const Script script, uint32_t sequence_number):TxIn(prev_id, prev_index, sequence_number){
+TxIn::TxIn(const char * prev_id, uint32_t prev_index, const Script script, uint32_t sequence_number){
+    outputIndex = prev_index;
+    sequence = sequence_number;
     if(strlen(prev_id) < 64){
         return;
+    }
+    uint8_t tmp[32];
+    fromHex(prev_id, 64, tmp, 32);
+    for(int i=0; i<32; i++){
+        hash[i] = tmp[31-i];
     }
     scriptSig = script;
 }
@@ -165,8 +181,7 @@ size_t TxOut::to_stream(SerializeStream *s, size_t offset) const{
 }
 
 //-------------------------------------------------------------------------------------- Transaction
-
-Tx::Tx(){
+void Tx::init(){
     version = 1;
     inputsNumber = 0;
     outputsNumber = 0;
@@ -177,7 +192,11 @@ Tx::Tx(){
     status = PARSING_DONE;
     bytes_parsed = 0;
 }
-Tx::Tx(const Tx & other):Tx(){
+Tx::Tx(){
+    init();
+}
+Tx::Tx(const Tx & other){
+    init();
     version = other.version;
     inputsNumber = other.inputsNumber;
     outputsNumber = other.outputsNumber;

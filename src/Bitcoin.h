@@ -414,16 +414,21 @@ protected:
     virtual size_t from_stream(ParseStream *s);
     virtual size_t to_stream(SerializeStream *s, size_t offset = 0) const;
     uint8_t lenLen; // for parsing only, length of the varint
+    void fromAddress(const char * address);
+    void init();
 public:
     void clear();
     Script();
     Script(const uint8_t * buffer, size_t len);
-    Script(const char * address);
+    /** \brief creates a script from address */
+    Script(const char * address){ fromAddress(address); };
 #if USE_ARDUINO_STRING
-    Script(const String address):Script(address.c_str()){};
+    /** \brief creates a script from address */
+    Script(const String address){ fromAddress(address.c_str()); };
 #endif
 #if USE_STD_STRING
-    Script(const std::string address):Script(address.c_str()){};
+    /** \brief creates a script from address */
+    Script(const std::string address){ fromAddress(address.c_str()); };
 #endif
     /** \brief creates one of standart scripts (P2PKH, P2WPKH) */
     Script(const PublicKey pubkey, ScriptType type = P2PKH);
@@ -484,6 +489,7 @@ class Witness : public Streamable{
     uint8_t curLen; // for parsing only, length of the varint
     uint8_t lenLen; // for parsing, length of the varint
     virtual void reset(){ status = PARSING_DONE; bytes_parsed = 0; cur_element_len=0; cur_bytes_parsed=0; cur_element=0; lenLen=0; };
+    void init();
 public:
     void clear();
     virtual size_t length() const;
@@ -517,6 +523,7 @@ class TxIn : public Streamable{
 protected:
     virtual size_t from_stream(ParseStream *s);
     virtual size_t to_stream(SerializeStream *s, size_t offset = 0) const;
+    void init();
 public:
     TxIn(void);
     TxIn(const uint8_t prev_id[32], uint32_t prev_index, const Script script, uint32_t sequence_number = 0xffffffff);
@@ -541,12 +548,13 @@ class TxOut : public Streamable{
 protected:
     virtual size_t from_stream(ParseStream *s);
     virtual size_t to_stream(SerializeStream *s, size_t offset = 0) const;
+    void init(){ status = PARSING_DONE; bytes_parsed=0; amount = 0; };
 public:
-    TxOut(){ status = PARSING_DONE; bytes_parsed=0; amount = 0; };
-    TxOut(uint64_t send_amount, const Script outputScript):TxOut(){ amount = send_amount; scriptPubkey = outputScript; };
-    TxOut(const Script outputScript, uint64_t send_amount):TxOut(send_amount, outputScript){};
-    TxOut(uint64_t send_amount, const char * address):TxOut(send_amount, Script(address)){};
-    TxOut(const char * address, uint64_t send_amount):TxOut(send_amount, address){};
+    TxOut(){ init(); };
+    TxOut(uint64_t send_amount, const Script outputScript){ init(); amount = send_amount; scriptPubkey = outputScript; };
+    TxOut(const Script outputScript, uint64_t send_amount){ init(); amount = send_amount; scriptPubkey = outputScript; };
+    TxOut(uint64_t send_amount, const char * address){ init(); amount = send_amount; scriptPubkey = Script(address); }; 
+    TxOut(const char * address, uint64_t send_amount){  init(); amount = send_amount; scriptPubkey = Script(address); };
     virtual size_t length() const{ return 8+scriptPubkey.length(); };
 
     /** \brief this script defines the rules for the spending input */
@@ -575,6 +583,7 @@ protected:
     virtual size_t to_stream(SerializeStream *s, size_t offset = 0) const;
     uint8_t segwit_flag;
     void clear();
+    void init();
 public:
     Tx();
     Tx(Tx const &other);

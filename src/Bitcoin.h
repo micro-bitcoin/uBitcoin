@@ -300,6 +300,9 @@ public:
     HDPrivateKey derive(uint32_t * index, size_t len) const;
     /** \brief derives a child according to derivation path. For example "m/84h/1h/0h/1/23/" for the 23rd change address for testnet with P2WPKH type (bip84). */
     HDPrivateKey derive(const char * path) const;
+#if USE_ARDUINO_STRING
+    HDPrivateKey derive(String path) const{ return derive(path.c_str()); };
+#endif
     // just to make sure it is compressed
     PublicKey publicKey() const{ PublicKey p = pubKey; p.compressed = true; return p; };
 };
@@ -328,6 +331,9 @@ public:
                  const Network * net = &DEFAULT_NETWORK,
                  ScriptType key_type = UNKNOWN_TYPE);
     HDPublicKey(const char * xpubArr);
+#if USE_ARDUINO_STRING
+    HDPublicKey(String pub){ from_str(pub.c_str(), pub.length()); };
+#endif
     ~HDPublicKey();
     /** \brief Length of the key (78). */
     virtual size_t length() const{ return 78; };
@@ -363,6 +369,9 @@ public:
     HDPublicKey derive(uint32_t * index, size_t len) const;
     /** \brief derives a child according to derivation path. For example "m/1/23/" for the 23rd change address. */
     HDPublicKey derive(const char * path) const;
+#if USE_ARDUINO_STRING
+    HDPublicKey derive(String path) const{ return derive(path.c_str()); };
+#endif
 };
 
 /**

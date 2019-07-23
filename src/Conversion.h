@@ -15,28 +15,55 @@ size_t toBase58(const uint8_t * array, size_t arraySize, char * output, size_t o
 #if USE_ARDUINO_STRING
 String toBase58(const uint8_t * array, size_t arraySize);
 #endif
+#if USE_STD_STRING
+std::string toBase58(const uint8_t * array, size_t arraySize);
+#endif
+
 
 // base58 conversion with 4-byte checksum at the end (doubleSha)
 size_t toBase58Check(const uint8_t * array, size_t arraySize, char * output, size_t outputSize);
 #if USE_ARDUINO_STRING
 String toBase58Check(const uint8_t * array, size_t arraySize);
 #endif
+#if USE_STD_STRING
+std::string toBase58Check(const uint8_t * array, size_t arraySize);
+#endif
 
 size_t fromBase58Length(const char * array, size_t arraySize);
 size_t fromBase58(const char * encoded, size_t encodedSize, uint8_t * output, size_t outputSize);
 size_t fromBase58Check(const char * encoded, size_t encodedSize, uint8_t * output, size_t outputSize);
+#if !(USE_ARDUINO_STRING || USE_STD_STRING)
+size_t fromBase58(const char * encoded, uint8_t * array, size_t arraySize);
+size_t fromBase58Check(const char * encoded, uint8_t * array, size_t arraySize);
+#endif
 #if USE_ARDUINO_STRING
 size_t fromBase58(String encoded, uint8_t * output, size_t outputSize);
 size_t fromBase58Check(String encoded, uint8_t * output, size_t outputSize);
 #endif
+#if USE_STD_STRING
+size_t fromBase58(std::string encoded, uint8_t * output, size_t outputSize);
+size_t fromBase58Check(std::string encoded, uint8_t * output, size_t outputSize);
+#endif
 
 size_t toBase43Length(const uint8_t * array, size_t arraySize);
 size_t toBase43(const uint8_t * array, size_t arraySize, char * output, size_t outputSize);
+#if USE_ARDUINO_STRING
+String toBase43(const uint8_t * array, size_t arraySize);
+#endif
 #if USE_STD_STRING
 std::string toBase43(const uint8_t * array, size_t arraySize);
 #endif
 size_t fromBase43Length(const char * array, size_t arraySize);
 size_t fromBase43(const char * encoded, size_t encodedSize, uint8_t * output, size_t outputSize);
+#if !(USE_ARDUINO_STRING || USE_STD_STRING)
+size_t fromBase43(const char * encoded, uint8_t * array, size_t arraySize);
+#endif
+#if USE_ARDUINO_STRING
+size_t fromBase43(String encoded, uint8_t * output, size_t outputSize);
+#endif
+#if USE_STD_STRING
+size_t fromBase43(std::string encoded, uint8_t * output, size_t outputSize);
+#endif
 
 size_t toHex(const uint8_t * array, size_t arraySize, char * output, size_t outputSize);
 #if USE_ARDUINO_STRING
@@ -47,14 +74,37 @@ size_t toHex(const uint8_t * array, size_t arraySize, Print &s); // TODO: pass p
 #if USE_STD_STRING
 std::string toHex(const uint8_t * array, size_t arraySize);
 #endif
-size_t fromHex(const char * hex, uint8_t * array, size_t arraySize);
 size_t fromHex(const char * hex, size_t hexLen, uint8_t * array, size_t arraySize);
 uint8_t hexToVal(char c);
+#if !(USE_ARDUINO_STRING  || USE_STD_STRING)
+size_t fromHex(const char * hex, uint8_t * array, size_t arraySize);
+#endif
+#if USE_ARDUINO_STRING
+size_t fromHex(String encoded, uint8_t * output, size_t outputSize);
+#endif
+#if USE_STD_STRING
+size_t fromHex(std::string encoded, uint8_t * output, size_t outputSize);
+#endif
 
 size_t toBase64Length(const uint8_t * array, size_t arraySize);
 size_t toBase64(const uint8_t * array, size_t arraySize, char * output, size_t outputSize);
+#if USE_ARDUINO_STRING
+String toBase64(const uint8_t * array, size_t arraySize);
+#endif
+#if USE_STD_STRING
+std::string toBase64(const uint8_t * array, size_t arraySize);
+#endif
 size_t fromBase64Length(const char * array, size_t arraySize);
 size_t fromBase64(const char * encoded, size_t encodedSize, uint8_t * output, size_t outputSize);
+#if !(USE_ARDUINO_STRING  || USE_STD_STRING)
+size_t fromBase64(const char * hex, uint8_t * array, size_t arraySize);
+#endif
+#if USE_ARDUINO_STRING
+size_t fromBase64(String encoded, uint8_t * output, size_t outputSize);
+#endif
+#if USE_STD_STRING
+size_t fromBase64(std::string encoded, uint8_t * output, size_t outputSize);
+#endif
 
 /* int conversion */
 uint64_t littleEndianToInt(const uint8_t * array, size_t arraySize);

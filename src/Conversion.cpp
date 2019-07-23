@@ -4,6 +4,11 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+#if USE_STD_STRING
+using std::string;
+#define String string
+#endif
+
 static const char BASE58_CHARS[] = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
 static const char BASE43_CHARS[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ$*+-./:";
 static const char BASE64_CHARS[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -28,23 +33,7 @@ size_t toHex(const uint8_t * array, size_t arraySize, char * output, size_t outp
     }
     return 2*arraySize;
 }
-#if USE_STD_STRING
-std::string toHex(const uint8_t * array, size_t arraySize){
-    char * output;
-    size_t outputSize = arraySize * 2 + 1;
-    output = (char *) malloc(outputSize);
-
-    toHex(array, arraySize, output, outputSize);
-
-    std::string result(output);
-
-    memset(output, 0, outputSize);
-    free(output);
-
-    return result;
-}
-#endif
-#if USE_ARDUINO_STRING
+#if USE_ARDUINO_STRING || USE_STD_STRING
 String toHex(const uint8_t * array, size_t arraySize){
     char * output;
     size_t outputSize = arraySize * 2 + 1;
@@ -59,7 +48,8 @@ String toHex(const uint8_t * array, size_t arraySize){
 
     return result;
 }
-
+#endif
+#if USE_ARDUINO_STRING
 size_t toHex(uint8_t v, Print &s){
     char c = (v >> 4) + '0';
     if(c > '9'){
@@ -120,11 +110,17 @@ size_t fromHex(const char * hex, size_t hexLen, uint8_t * array, size_t arraySiz
     }
     return hexLen/2;
 }
-
+#if USE_STD_STRING || USE_ARDUINO_STRING
+size_t fromHex(std::string encoded, uint8_t * output, size_t outputSize){
+    return fromHex(encoded.c_str(), encoded.length(), output, outputSize);
+};
+#endif
+#if !(USE_ARDUINO_STRING  || USE_STD_STRING)
 size_t fromHex(const char * hex, uint8_t * array, size_t arraySize){
-    size_t len = strlen(hex);
-    return fromHex(hex, len, array, arraySize);
+    return fromHex(hex, strlen(hex), array, arraySize);
 }
+#endif
+
 
 /******************* Base 58 conversion *******************/
 
@@ -211,7 +207,7 @@ size_t toBase58(const uint8_t * array, size_t arraySize, char * output, size_t o
     memset(output + l, 0, outputSize-l);
     return l;
 }
-#if USE_ARDUINO_STRING
+#if USE_ARDUINO_STRING || USE_STD_STRING
 String toBase58(const uint8_t * array, size_t arraySize){
     size_t len = toBase58Length(array, arraySize) + 1; // +1 for null terminator
     char * buf = (char *)malloc(len);
@@ -236,7 +232,7 @@ size_t toBase58Check(const uint8_t * array, size_t arraySize, char * output, siz
     free(arr);
     return l;
 }
-#if USE_ARDUINO_STRING
+#if USE_ARDUINO_STRING || USE_STD_STRING
 String toBase58Check(const uint8_t * array, size_t arraySize){
     size_t len = toBase58Length(array, arraySize) + 5; // +4 checksum +1 for null terminator
     char * buf = (char *)malloc(len);
@@ -246,6 +242,7 @@ String toBase58Check(const uint8_t * array, size_t arraySize){
     return result;
 }
 #endif
+
 
 // TODO: add zero count, fix wrong length
 size_t fromBase58Length(const char * array, size_t arraySize){
@@ -310,17 +307,6 @@ size_t fromBase58(const char * encoded, size_t encodedSize, uint8_t * output, si
     return size-shift;
 }
 
-#if USE_ARDUINO_STRING
-size_t fromBase58(String encoded, uint8_t * output, size_t outputSize){
-    size_t len = encoded.length()+1; // +1 for null terminator
-    char * arr = (char *)malloc(len);
-    encoded.toCharArray(arr, len);
-    size_t l = fromBase58(arr, len, output, outputSize);
-    free(arr);
-    return l;
-}
-#endif
-
 size_t fromBase58Check(const char * encoded, size_t encodedSize, uint8_t * output, size_t outputSize){
     uint8_t * arr;
     arr = (uint8_t *) malloc(outputSize+4);
@@ -342,14 +328,20 @@ size_t fromBase58Check(const char * encoded, size_t encodedSize, uint8_t * outpu
     return l-4;
 }
 
-#if USE_ARDUINO_STRING
+#if USE_STD_STRING || USE_ARDUINO_STRING
+size_t fromBase58(String encoded, uint8_t * output, size_t outputSize){
+    return fromBase58(encoded.c_str(), encoded.length(), output, outputSize);
+};
 size_t fromBase58Check(String encoded, uint8_t * output, size_t outputSize){
-    size_t len = encoded.length()+1; // +1 for null terminator
-    char * arr = (char *)malloc(len);
-    encoded.toCharArray(arr, len);
-    size_t l = fromBase58Check(arr, len, output, outputSize);
-    free(arr);
-    return l;
+    return fromBase58Check(encoded.c_str(), encoded.length(), output, outputSize);
+};
+#endif
+#if !(USE_ARDUINO_STRING || USE_STD_STRING)
+size_t fromBase58(const char * encoded, uint8_t * array, size_t arraySize){
+    return fromBase58(encoded, strlen(encoded), array, arraySize);
+}
+size_t fromBase58Check(const char * encoded, uint8_t * array, size_t arraySize){
+    return fromBase58Check(encoded, strlen(encoded), array, arraySize);
 }
 #endif
 
@@ -500,6 +492,16 @@ size_t fromBase43(const char * encoded, size_t encodedSize, uint8_t * output, si
     free(tmp);
     return size-shift;
 }
+#if USE_STD_STRING || USE_ARDUINO_STRING
+size_t fromBase43(String encoded, uint8_t * output, size_t outputSize){
+    return fromBase43(encoded.c_str(), encoded.length(), output, outputSize);
+};
+#endif
+#if !(USE_ARDUINO_STRING || USE_STD_STRING)
+size_t fromBase43(const char * encoded, uint8_t * array, size_t arraySize){
+    return fromBase43(encoded, strlen(encoded), array, arraySize);
+}
+#endif
 
 /******************* Base 64 conversion *******************/
 
@@ -541,6 +543,16 @@ size_t toBase64(const uint8_t * array, size_t arraySize, char * output, size_t o
     }
     return 4*cur;
 }
+#if USE_ARDUINO_STRING || USE_STD_STRING
+String toBase64(const uint8_t * array, size_t arraySize){
+    size_t len = toBase64Length(array, arraySize) + 1; // +1 for null terminator
+    char * buf = (char *)malloc(len);
+    toBase64(array, arraySize, buf, len);
+    String result(buf);
+    free(buf);
+    return result;
+}
+#endif
 size_t fromBase64Length(const char * array, size_t arraySize){
     size_t v = (arraySize / 4) * 3;
     if(array[arraySize-1] == '='){
@@ -601,6 +613,16 @@ size_t fromBase64(const char * encoded, size_t encodedSize, uint8_t * output, si
     }
     return 3 * cur;
 }
+#if USE_STD_STRING || USE_ARDUINO_STRING
+size_t fromBase64(std::string encoded, uint8_t * output, size_t outputSize){
+    return fromBase64(encoded.c_str(), encoded.length(), output, outputSize);
+};
+#endif
+#if !(USE_ARDUINO_STRING  || USE_STD_STRING)
+size_t fromBase64(const char * hex, uint8_t * array, size_t arraySize){
+    return fromBase64(hex, strlen(hex), array, arraySize);
+}
+#endif
 
 /* Integer conversion */
 

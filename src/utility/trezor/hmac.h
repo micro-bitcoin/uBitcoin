@@ -27,6 +27,11 @@
 #include <stdint.h>
 #include "sha2.h"
 
+typedef struct _HMAC_SHA1_CTX {
+	uint8_t o_key_pad[SHA1_BLOCK_LENGTH];
+	SHA1_CTX ctx;
+} HMAC_SHA1_CTX;
+
 typedef struct _HMAC_SHA256_CTX {
 	uint8_t o_key_pad[SHA256_BLOCK_LENGTH];
 	SHA256_CTX ctx;
@@ -41,6 +46,12 @@ typedef struct _HMAC_SHA512_CTX {
 extern "C"
 {
 #endif
+
+void hmac_sha1_Init(HMAC_SHA1_CTX *hctx, const uint8_t *key, const uint32_t keylen);
+void hmac_sha1_Update(HMAC_SHA1_CTX *hctx, const uint8_t *msg, const uint32_t msglen);
+void hmac_sha1_Final(HMAC_SHA1_CTX *hctx, uint8_t *hmac);
+void hmac_sha1(const uint8_t *key, const uint32_t keylen, const uint8_t *msg, const uint32_t msglen, uint8_t *hmac);
+void hmac_sha1_prepare(const uint8_t *key, const uint32_t keylen, uint32_t *opad_digest, uint32_t *ipad_digest);
 
 void hmac_sha256_Init(HMAC_SHA256_CTX *hctx, const uint8_t *key, const uint32_t keylen);
 void hmac_sha256_Update(HMAC_SHA256_CTX *hctx, const uint8_t *msg, const uint32_t msglen);

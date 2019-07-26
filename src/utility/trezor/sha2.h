@@ -86,6 +86,7 @@ typedef struct _SHA512_CTX {
 }
 #endif /* BYTE_ORDER == LITTLE_ENDIAN */
 
+extern const uint32_t sha1_initial_hash_value[5];
 extern const uint32_t sha256_initial_hash_value[8];
 extern const uint64_t sha512_initial_hash_value[8];
 

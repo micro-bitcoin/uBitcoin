@@ -347,6 +347,20 @@ void HDPrivateKey::fingerprint(uint8_t arr[4]) const{
     hash160(secArr, l, hash);
     memcpy(arr, hash, 4);
 }
+#if USE_STD_STRING
+std::string HDPrivateKey::fingerprint() const{
+    uint8_t arr[4];
+    fingerprint(arr);
+    return toHex(arr, 4);
+}
+#endif
+#if USE_ARDUINO_STRING
+String HDPrivateKey::fingerprint() const{
+    uint8_t arr[4];
+    fingerprint(arr);
+    return toHex(arr, 4);
+}
+#endif
 
 HDPublicKey HDPrivateKey::xpub() const{
     PublicKey p = publicKey();
@@ -695,13 +709,27 @@ string HDPublicKey::address() const{
 }
 #endif
 
-void HDPublicKey::fingerprint(uint8_t arr[4]){
+void HDPublicKey::fingerprint(uint8_t arr[4]) const{
     uint8_t secArr[65] = { 0 };
     int l = sec(secArr, sizeof(secArr));
     uint8_t hash[20] = { 0 };
     hash160(secArr, l, hash);
     memcpy(arr, hash, 4);
 }
+#if USE_STD_STRING
+std::string HDPublicKey::fingerprint() const{
+    uint8_t arr[4];
+    fingerprint(arr);
+    return toHex(arr, 4);
+}
+#endif
+#if USE_ARDUINO_STRING
+String HDPublicKey::fingerprint() const{
+    uint8_t arr[4];
+    fingerprint(arr);
+    return toHex(arr, 4);
+}
+#endif
 
 HDPublicKey HDPublicKey::child(uint32_t index) const{
     HDPublicKey child;

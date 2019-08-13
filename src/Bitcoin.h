@@ -293,6 +293,12 @@ public:
 
     /** \brief populates array with the fingerprint of the key */
     void fingerprint(uint8_t arr[4]) const;
+#if USE_STD_STRING
+    std::string fingerprint() const;
+#endif
+#if USE_ARDUINO_STRING
+    String fingerprint() const;
+#endif
 
     HDPrivateKey child(uint32_t index, bool hardened = false) const;
     HDPrivateKey hardenedChild(uint32_t index) const;
@@ -359,7 +365,13 @@ public:
 #endif
 
     /** \brief populates array with the fingerprint of the key */
-    void fingerprint(uint8_t arr[4]);
+    void fingerprint(uint8_t arr[4]) const;
+#if USE_STD_STRING
+    std::string fingerprint() const;
+#endif
+#if USE_ARDUINO_STRING
+    String fingerprint() const;
+#endif
 
     /** \brief derive a child. 
      *         You can derive only normal children (not hardened) from the public key. 

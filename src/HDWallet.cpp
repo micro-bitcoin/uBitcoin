@@ -277,8 +277,10 @@ int HDPrivateKey::address(char * addr, size_t len) const{
             return segwitAddress(addr, len);
         case P2SH_P2WPKH:
             return nestedSegwitAddress(addr, len);
-        default:
+        case P2PKH:
             return legacyAddress(addr, len);
+        default:
+            return segwitAddress(addr, len);
     }
 }
 #if USE_ARDUINO_STRING
@@ -293,8 +295,10 @@ String HDPrivateKey::address() const{
             return segwitAddress();
         case P2SH_P2WPKH:
             return nestedSegwitAddress();
-        default:
+        case P2PKH:
             return legacyAddress();
+        default:
+            return segwitAddress();
     }
 }
 #endif
@@ -310,8 +314,10 @@ string HDPrivateKey::address() const{
             return segwitAddress();
         case P2SH_P2WPKH:
             return nestedSegwitAddress();
-        default:
+        case P2PKH:
             return legacyAddress();
+        default:
+            return segwitAddress();
     }
 }
 #endif
@@ -670,8 +676,10 @@ int HDPublicKey::address(char * addr, size_t len) const{
             return PublicKey::segwitAddress(addr, len, network);
         case P2SH_P2WPKH:
             return PublicKey::nestedSegwitAddress(addr, len, network);
-        default:
+        case P2PKH:
             return PublicKey::legacyAddress(addr, len, network);
+        default:
+            return PublicKey::segwitAddress(addr, len, network);
     }
 }
 #if USE_ARDUINO_STRING
@@ -686,8 +694,10 @@ String HDPublicKey::address() const{
             return PublicKey::segwitAddress(network);
         case P2SH_P2WPKH:
             return PublicKey::nestedSegwitAddress(network);
-        default:
+        case P2PKH:
             return PublicKey::legacyAddress(network);
+        default:
+            return PublicKey::segwitAddress(network);
     }
 }
 #endif
@@ -703,8 +713,10 @@ string HDPublicKey::address() const{
             return PublicKey::segwitAddress(network);
         case P2SH_P2WPKH:
             return PublicKey::nestedSegwitAddress(network);
-        default:
+        case P2PKH:
             return PublicKey::legacyAddress(network);
+        default:
+            return PublicKey::segwitAddress(network);
     }
 }
 #endif

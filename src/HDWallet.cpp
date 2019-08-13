@@ -400,7 +400,7 @@ HDPrivateKey HDPrivateKey::child(uint32_t index, bool hardened) const{
                     break;
             }
         }
-        if(depth == 1 && type != UNKNOWN_TYPE){
+        if(depth == 1){
             if(index == 0x80000001){
                 child.network = &Testnet;
             }

@@ -55,6 +55,8 @@ typedef struct {
     uint8_t ypub[4]; 
     /** \brief HD public key for native Segwit (P2WPKH) */
     uint8_t zpub[4]; 
+    /** \brief bip32 coin index */
+    uint32_t bip32;
 } Network;
 
 extern const Network Mainnet;

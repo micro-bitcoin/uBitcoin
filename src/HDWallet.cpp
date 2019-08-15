@@ -80,6 +80,12 @@ size_t HDPrivateKey::to_bytes(uint8_t * arr, size_t len) const{
         case P2SH_P2WPKH:
             memcpy(hex, network->yprv, 4);
             break;
+        case P2WSH:
+            memcpy(hex, network->Zprv, 4);
+            break;
+        case P2SH_P2WSH:
+            memcpy(hex, network->Yprv, 4);
+            break;
         default:
             memcpy(hex, network->xprv, 4);
     }
@@ -135,6 +141,16 @@ size_t HDPrivateKey::from_stream(ParseStream *s){
                 break;
             }else if(memcmp(prefix, networks[i]->zprv, 4)==0){
                 type = P2WPKH;
+                found = true;
+                network = networks[i];
+                break;
+            }else if(memcmp(prefix, networks[i]->Yprv, 4)==0){
+                type = P2SH_P2WSH;
+                found = true;
+                network = networks[i];
+                break;
+            }else if(memcmp(prefix, networks[i]->Zprv, 4)==0){
+                type = P2WSH;
                 found = true;
                 network = networks[i];
                 break;
@@ -330,6 +346,12 @@ int HDPrivateKey::xpub(char * arr, size_t len) const{
         case P2SH_P2WPKH:
             memcpy(hex, network->ypub, 4);
             break;
+        case P2WSH:
+            memcpy(hex, network->Zpub, 4);
+            break;
+        case P2SH_P2WSH:
+            memcpy(hex, network->Ypub, 4);
+            break;
         default:
             memcpy(hex, network->xpub, 4);
     }
@@ -404,6 +426,11 @@ HDPrivateKey HDPrivateKey::child(uint32_t index, bool hardened) const{
                 case 0x80000000+84:
                     child.type = P2WPKH;
                     break;
+                case 0x80000000+48:
+                    child.type = MULTISIG;
+                case 0x80000000+45:
+                    child.type = P2SH;
+                    break;
             }
         }
         if(depth == 1){
@@ -412,6 +439,14 @@ HDPrivateKey HDPrivateKey::child(uint32_t index, bool hardened) const{
             }
             if(index == 0x80000000){
                 child.network = &Mainnet;
+            }
+        }
+        if(depth == 3 && type == MULTISIG){
+            if(index == 1){
+                child.type = P2SH_P2WSH;
+            }
+            if(index == 2){
+                child.type = P2WSH;
             }
         }
     }
@@ -508,6 +543,12 @@ size_t HDPublicKey::to_bytes(uint8_t * arr, size_t len) const{
         case P2SH_P2WPKH:
             memcpy(hex, network->ypub, 4);
             break;
+        case P2WSH:
+            memcpy(hex, network->Zpub, 4);
+            break;
+        case P2SH_P2WSH:
+            memcpy(hex, network->Ypub, 4);
+            break;
         default:
             memcpy(hex, network->xpub, 4);
     }
@@ -564,6 +605,16 @@ size_t HDPublicKey::from_stream(ParseStream *s){
                 break;
             }else if(memcmp(prefix, networks[i]->zpub, 4)==0){
                 type = P2WPKH;
+                found = true;
+                network = networks[i];
+                break;
+            }else if(memcmp(prefix, networks[i]->Ypub, 4)==0){
+                type = P2SH_P2WSH;
+                found = true;
+                network = networks[i];
+                break;
+            }else if(memcmp(prefix, networks[i]->Zpub, 4)==0){
+                type = P2WSH;
                 found = true;
                 network = networks[i];
                 break;

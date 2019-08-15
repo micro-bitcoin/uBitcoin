@@ -40,7 +40,7 @@ typedef struct {
     /** \brief Pay-To-Script-Hash addresses */
     uint8_t p2sh;    
     /** \brief Prefix for segwit addreses ...for regtest it is larger */
-    char bech32[3];  
+    char bech32[5];  
     /** \brief Wallet Import Format, used in PrivateKey */
     uint8_t wif;     
     /** \brief HD private key for legacy addresses (P2PKH) */
@@ -49,21 +49,30 @@ typedef struct {
     uint8_t yprv[4]; 
     /** \brief HD private key for native Segwit (P2WPKH) */
     uint8_t zprv[4]; 
+    /** \brief HD private key for nested Segwit Multisig (P2SH-P2WSH) */
+    uint8_t Yprv[4]; 
+    /** \brief HD private key for native Segwit Multisig (P2WSH) */
+    uint8_t Zprv[4]; 
     /** \brief HD public key for legacy addresses (P2PKH) */
     uint8_t xpub[4]; 
     /** \brief HD public key for nested Segwit (P2SH-P2WPKH) */
     uint8_t ypub[4]; 
     /** \brief HD public key for native Segwit (P2WPKH) */
     uint8_t zpub[4]; 
+    /** \brief HD public key for nested Segwit Multisig (P2SH-P2WSH) */
+    uint8_t Ypub[4]; 
+    /** \brief HD public key for native Segwit Multisig (P2WSH) */
+    uint8_t Zpub[4]; 
     /** \brief bip32 coin index */
     uint32_t bip32;
 } Network;
 
 extern const Network Mainnet;
 extern const Network Testnet;
+extern const Network Regtest;
 
-extern const Network * networks[2];
-const uint8_t networks_len = 2;
+extern const Network * networks[3];
+const uint8_t networks_len = 3;
 
 // number of rounds for mnemonic to seed conversion
 #define PBKDF2_ROUNDS 2048
@@ -79,7 +88,8 @@ enum ScriptType{
     P2WPKH,
     P2WSH,
     P2SH_P2WPKH,
-    P2SH_P2WSH
+    P2SH_P2WSH,
+    MULTISIG
 };
 
 /** \brief SigHash types */

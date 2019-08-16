@@ -428,6 +428,7 @@ HDPrivateKey HDPrivateKey::child(uint32_t index, bool hardened) const{
                     break;
                 case 0x80000000+48:
                     child.type = MULTISIG;
+                    break;
                 case 0x80000000+45:
                     child.type = P2SH;
                     break;
@@ -442,10 +443,10 @@ HDPrivateKey HDPrivateKey::child(uint32_t index, bool hardened) const{
             }
         }
         if(depth == 3 && type == MULTISIG){
-            if(index == 1){
+            if(index == 0x80000001){
                 child.type = P2SH_P2WSH;
             }
-            if(index == 2){
+            if(index == 0x80000002){
                 child.type = P2WSH;
             }
         }

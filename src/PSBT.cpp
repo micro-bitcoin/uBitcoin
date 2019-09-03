@@ -656,11 +656,25 @@ uint64_t PSBT::fee() const{
 	return input_amount-output_amount;
 }
 
-bool PSBT::isMine(uint8_t outputNumber, HDPublicKey xpub){
+bool PSBT::isMine(uint8_t outputNumber, const HDPublicKey xpub) const{
 	bool mine = false;
     if(txOutsMeta[outputNumber].derivationsLen > 0){
         for(unsigned int j=0; j<txOutsMeta[outputNumber].derivationsLen; j++){
             PublicKey pub = xpub.derive(txOutsMeta[outputNumber].derivations[j].derivation, txOutsMeta[outputNumber].derivations[j].derivationLen);
+            if(memcmp(pub.point, txOutsMeta[outputNumber].derivations[j].pubkey.point, 64)==0){
+                mine = true;
+            }
+        }
+    }
+    // TODO: add verification of the script
+    return mine;
+}
+
+bool PSBT::isMine(uint8_t outputNumber, const HDPrivateKey xprv) const{
+	bool mine = false;
+    if(txOutsMeta[outputNumber].derivationsLen > 0){
+        for(unsigned int j=0; j<txOutsMeta[outputNumber].derivationsLen; j++){
+            PublicKey pub = xprv.derive(txOutsMeta[outputNumber].derivations[j].derivation, txOutsMeta[outputNumber].derivations[j].derivationLen).xpub();
             if(memcmp(pub.point, txOutsMeta[outputNumber].derivations[j].pubkey.point, 64)==0){
                 mine = true;
             }

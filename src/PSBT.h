@@ -85,7 +85,8 @@ public:
     /** \brief Calculates fee if input amounts are known */
     uint64_t fee() const;
     /** \brief Verifies if output is mine */
-    bool isMine(uint8_t outputNumber, HDPublicKey xpub);
+    bool isMine(uint8_t outputNumber, const HDPublicKey xpub) const;
+    bool isMine(uint8_t outputNumber, const HDPrivateKey xprv) const;
     // TODO: add verify() function that checks all the fields (scripts, pubkeys etc)
     // TODO: add isChange() function that would verify the output with respect the inputs
     PSBT &operator=(PSBT const &other);

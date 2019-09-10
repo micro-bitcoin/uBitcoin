@@ -70,9 +70,10 @@ typedef struct {
 extern const Network Mainnet;
 extern const Network Testnet;
 extern const Network Regtest;
+extern const Network Signet;
 
-extern const Network * networks[3];
-const uint8_t networks_len = 3;
+extern const Network * networks[4];
+const uint8_t networks_len = 4;
 
 // number of rounds for mnemonic to seed conversion
 #define PBKDF2_ROUNDS 2048

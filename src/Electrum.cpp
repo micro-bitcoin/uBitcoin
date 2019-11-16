@@ -117,7 +117,6 @@ size_t ElectrumTx::from_stream(ParseStream *s){
             while(s->available() && bytes_parsed+bytes_read < start + 78){
                 bytes_read+=s->parse(&txInsMeta[i].hd);
             }
-            printf("\r\n");
             start += 78;
             while(s->available() && bytes_parsed+bytes_read < start + 4){
                 uint8_t c = s->read();

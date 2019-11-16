@@ -23,6 +23,7 @@
 
 #include "rand.h"
 #include "sha2.h"
+#include <string.h>
 
 // #ifndef RAND_PLATFORM_INDEPENDENT
 

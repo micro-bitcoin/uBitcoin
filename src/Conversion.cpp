@@ -111,7 +111,7 @@ size_t fromHex(const char * hex, size_t hexLen, uint8_t * array, size_t arraySiz
     return hexLen/2;
 }
 #if USE_STD_STRING || USE_ARDUINO_STRING
-size_t fromHex(std::string encoded, uint8_t * output, size_t outputSize){
+size_t fromHex(String encoded, uint8_t * output, size_t outputSize){
     return fromHex(encoded.c_str(), encoded.length(), output, outputSize);
 };
 #endif
@@ -420,12 +420,12 @@ size_t toBase43(const uint8_t * array, size_t arraySize, char * output, size_t o
     memset(output + l, 0, outputSize-l);
     return l;
 }
-#if USE_STD_STRING
-std::string toBase43(const uint8_t * array, size_t arraySize){
+#if (USE_STD_STRING || USE_ARDUINO_STRING)
+String toBase43(const uint8_t * array, size_t arraySize){
   size_t l = toBase43Length(array, arraySize);
   char * output = (char *)calloc(l+1, sizeof(char));
   toBase43(array, arraySize, output, l);
-  std::string s(output);
+  String s(output);
   free(output);
   return s;
 }
@@ -492,7 +492,7 @@ size_t fromBase43(const char * encoded, size_t encodedSize, uint8_t * output, si
     free(tmp);
     return size-shift;
 }
-#if USE_STD_STRING || USE_ARDUINO_STRING
+#if (USE_STD_STRING || USE_ARDUINO_STRING)
 size_t fromBase43(String encoded, uint8_t * output, size_t outputSize){
     return fromBase43(encoded.c_str(), encoded.length(), output, outputSize);
 };
@@ -614,7 +614,7 @@ size_t fromBase64(const char * encoded, size_t encodedSize, uint8_t * output, si
     return 3 * cur;
 }
 #if USE_STD_STRING || USE_ARDUINO_STRING
-size_t fromBase64(std::string encoded, uint8_t * output, size_t outputSize){
+size_t fromBase64(String encoded, uint8_t * output, size_t outputSize){
     return fromBase64(encoded.c_str(), encoded.length(), output, outputSize);
 };
 #endif

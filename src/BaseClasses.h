@@ -140,9 +140,21 @@ public:
         ParseByteStream s(arr, len, format);
         return from_stream(&s);
     }
+#if USE_ARDUINO_STRING
+    size_t parse(String arr, encoding_format format=HEX_ENCODING){
+        return parse(arr.c_str(), strlen(arr.c_str()), format);
+    }
+#endif
+#if USE_STD_STRING
+    size_t parse(std::string arr, encoding_format format=HEX_ENCODING){
+        return parse(arr.c_str(), strlen(arr.c_str()), format);
+    }
+#endif
+#if !(USE_ARDUINO_STRING  || USE_STD_STRING)
     size_t parse(const char * arr, encoding_format format=HEX_ENCODING){
         return parse(arr, strlen(arr), format);
     }
+#endif
     size_t serialize(uint8_t * arr, size_t len, size_t offset = 0, encoding_format format=RAW) const;
     size_t parse(const char * arr, size_t len, encoding_format format=HEX_ENCODING){
         return parse((const uint8_t *) arr, len, format);

@@ -617,10 +617,26 @@ size_t fromBase64(const char * encoded, size_t encodedSize, uint8_t * output, si
 size_t fromBase64(String encoded, uint8_t * output, size_t outputSize){
     return fromBase64(encoded.c_str(), encoded.length(), output, outputSize);
 };
+String base64ToHex(String b64){
+    size_t len = fromBase64Length(b64.c_str(), strlen(b64.c_str())) + 1; // +1 for null terminator
+    uint8_t * buf = (uint8_t *)malloc(len);
+    len = fromBase64(b64, buf, len);
+    String result = toHex(buf, len);
+    free(buf);
+    return result;
+};
+String hexToBase64(String hex){
+    size_t len = strlen(hex.c_str())/2+1; // +1 for null terminator
+    uint8_t * buf = (uint8_t *)malloc(len);
+    len = fromHex(hex, buf, len);
+    String result = toBase64(buf, len);
+    free(buf);
+    return result;
+};
 #endif
 #if !(USE_ARDUINO_STRING  || USE_STD_STRING)
-size_t fromBase64(const char * hex, uint8_t * array, size_t arraySize){
-    return fromBase64(hex, strlen(hex), array, arraySize);
+size_t fromBase64(const char * b64, uint8_t * array, size_t arraySize){
+    return fromBase64(b64, strlen(b64), array, arraySize);
 }
 #endif
 

@@ -97,13 +97,17 @@ std::string toBase64(const uint8_t * array, size_t arraySize);
 size_t fromBase64Length(const char * array, size_t arraySize);
 size_t fromBase64(const char * encoded, size_t encodedSize, uint8_t * output, size_t outputSize);
 #if !(USE_ARDUINO_STRING  || USE_STD_STRING)
-size_t fromBase64(const char * hex, uint8_t * array, size_t arraySize);
+size_t fromBase64(const char * encoded, uint8_t * array, size_t arraySize);
 #endif
 #if USE_ARDUINO_STRING
 size_t fromBase64(String encoded, uint8_t * output, size_t outputSize);
+String base64ToHex(String b64);
+String hexToBase64(String hex);
 #endif
 #if USE_STD_STRING
 size_t fromBase64(std::string encoded, uint8_t * output, size_t outputSize);
+std::string base64ToHex(std::string b64);
+std::string hexToBase64(std::string hex);
 #endif
 
 /* int conversion */

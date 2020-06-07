@@ -110,9 +110,21 @@ class Script;
 class TxIn;
 
 const char * generateMnemonic(int strength = 128);
+const char * generateMnemonic(uint8_t numWords, const uint8_t * entropy_data, size_t dataLen);
 const char * generateMnemonic(const uint8_t * entropy_data, size_t dataLen);
+#if USE_ARDUINO_STRING
+const char * generateMnemonic(uint8_t numWords, const String entropy_string);
+const char * generateMnemonic(const String entropy_string);
+bool checkMnemonic(const String mnemonic);
+#elif USE_STD_STRING
+const char * generateMnemonic(uint8_t numWords, const std::string entropy_string);
+const char * generateMnemonic(const std::string entropy_string);
+bool checkMnemonic(const std::string mnemonic);
+#else
+const char * generateMnemonic(uint8_t numWords, const char * entropy_string);
 const char * generateMnemonic(const char * entropy_string);
 bool checkMnemonic(const char * mnemonic);
+#endif
 
 /**
  *  PublicKey class.

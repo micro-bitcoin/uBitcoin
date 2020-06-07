@@ -13,6 +13,7 @@
 
 #if USE_STD_STRING
 using std::string;
+#define String std::string
 #endif
 
 const Network Mainnet = {
@@ -92,17 +93,39 @@ const Network * networks[4] = { &Mainnet, &Testnet, &Regtest, &Signet };
 const char * generateMnemonic(int strength){
     return mnemonic_generate(strength);
 }
+const char * generateMnemonic(uint8_t numWords, const uint8_t * entropy_data, size_t dataLen){
+    if(numWords<12 || numWords > 24 || numWords % 3 != 0){
+        return NULL;
+    }
+    uint8_t hash[32];
+    sha256(entropy_data, dataLen, hash);
+    size_t len = numWords*4/3;
+    return mnemonic_from_data(entropy_data, len);
+}
 const char * generateMnemonic(const uint8_t * entropy_data, size_t dataLen){
-    return mnemonic_from_data(entropy_data, dataLen);
+    return generateMnemonic(24, entropy_data, dataLen);
+}
+#if !(USE_ARDUINO_STRING || USE_STD_STRING)
+const char * generateMnemonic(uint8_t numWords, const char * entropy_string){
+    return generateMnemonic(numWords, (uint8_t*)entropy_string, strlen(entropy_string));
 }
 const char * generateMnemonic(const char * entropy_string){
-    uint8_t hash[32];
-    sha256(entropy_string, strlen(entropy_string), hash);
-    return mnemonic_from_data(hash, sizeof(hash));
+    return generateMnemonic(24, entropy_string);
 }
 bool checkMnemonic(const char * mnemonic){
     return mnemonic_check(mnemonic);
 }
+#else
+const char * generateMnemonic(uint8_t numWords, const String entropy_string){
+    return generateMnemonic(numWords, (uint8_t*)entropy_string.c_str(), strlen(entropy_string.c_str()));
+}
+const char * generateMnemonic(const String entropy_string){
+    return generateMnemonic(24, entropy_string);
+}
+bool checkMnemonic(const String mnemonic){
+    return mnemonic_check(mnemonic.c_str());
+}
+#endif
 
 // ---------------------------------------------------------------- Signature class
 

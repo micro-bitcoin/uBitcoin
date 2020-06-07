@@ -59,6 +59,11 @@ typedef struct{
 
 /** \brief Calculates descriptor checksum for Bitcoin Core. */
 size_t descriptorChecksum(const char * span, size_t spanLen, char * output, size_t outputSize);
+#if USE_ARDUINO_STRING
+String descriptorChecksum(String descriptor);
+#elif USE_STD_STRING
+std::string descriptorChecksum(std::string descriptor);
+#endif
 
 /** \brief PSBT class. See [bip174](https://github.com/bitcoin/bips/blob/master/bip-0174.mediawiki) */
 class PSBT : public Streamable{

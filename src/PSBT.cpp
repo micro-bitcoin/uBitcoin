@@ -69,6 +69,14 @@ size_t descriptorChecksum(const char * span, size_t spanLen, char * output, size
     return 8;
 }
 
+#if (USE_ARDUINO_STRING || USE_STD_STRING)
+String descriptorChecksum(String descriptor){
+    char checksum[10] = { 0 };
+    descriptorChecksum(descriptor.c_str(), strlen(descriptor.c_str()), checksum, sizeof(checksum));
+    return String(checksum);
+}
+#endif
+
 size_t PSBT::from_stream(ParseStream *s){
     if(status == PARSING_FAILED){
         return 0;

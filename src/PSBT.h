@@ -82,6 +82,15 @@ public:
     int add(uint8_t section, const Script * k, const Script * v);
     /** \brief Signes everything it can with keys derived from root HD private key */
     uint8_t sign(const HDPrivateKey root);
+    /** \brief parses psbt transaction from base64 encoded string */
+#if USE_ARDUINO_STRING
+    size_t parseBase64(String b64);
+    String toBase64();
+#endif
+#if USE_STD_STRING
+    size_t parseBase64(std::string b64);
+    std::string toBase64();
+#endif
     /** \brief Calculates fee if input amounts are known */
     uint64_t fee() const;
     /** \brief Verifies if output is mine */

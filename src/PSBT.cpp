@@ -1,4 +1,9 @@
 #include "PSBT.h"
+#include "Conversion.h"
+#if USE_STD_STRING
+using std::string;
+#define String string
+#endif
 
 // descriptor checksum from https://github.com/bitcoin/bitcoin/blob/master/src/script/descriptor.cpp
 uint64_t PolyMod(uint64_t c, int val){
@@ -637,6 +642,18 @@ uint8_t PSBT::sign(const HDPrivateKey root){
 	}
 	return counter;
 }
+
+// TODO: refactor, super unefficient
+#if USE_ARDUINO_STRING
+size_t PSBT::parseBase64(String b64){
+	String s = base64ToHex(b64);
+	parse(s);
+	return s.length()/2;
+}
+String PSBT::toBase64(){
+	return hexToBase64(toString());
+}
+#endif
 
 uint64_t PSBT::fee() const{
 	uint64_t input_amount = 0;

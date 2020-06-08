@@ -109,7 +109,7 @@ class HDPrivateKey;
 class Script;
 class TxIn;
 
-const char * generateMnemonic(int strength = 128);
+const char * generateMnemonic(uint8_t numWords);
 const char * generateMnemonic(uint8_t numWords, const uint8_t * entropy_data, size_t dataLen);
 const char * generateMnemonic(const uint8_t * entropy_data, size_t dataLen);
 #if USE_ARDUINO_STRING

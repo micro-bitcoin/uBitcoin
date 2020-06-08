@@ -90,7 +90,11 @@ const Network Signet = {
 
 const Network * networks[4] = { &Mainnet, &Testnet, &Regtest, &Signet };
 
-const char * generateMnemonic(int strength){
+const char * generateMnemonic(uint8_t numWords){
+    if(numWords<12 || numWords > 24 || numWords % 3 != 0){
+        return NULL;
+    }
+    int strength = numWords*32/3;
     return mnemonic_generate(strength);
 }
 const char * generateMnemonic(uint8_t numWords, const uint8_t * entropy_data, size_t dataLen){

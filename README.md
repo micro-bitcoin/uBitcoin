@@ -1,84 +1,92 @@
-# Micro-Bitcoin
+# Overview
 
-C++ Bitcoin library for microcontrollers. Supports [Arduino](https://www.arduino.cc/), [ARM mbed](https://www.mbed.com/en/), bare metal.<br>
-It provides a collection of convenient classes for Bitcoin and general elliptic curve ariphmetics.<br>
-This library is built on top of [trezor-crypto](https://github.com/trezor/trezor-crypto) library. API is inspired by [Jimmy's](https://github.com/jimmysong/) Porgramming Blockchain class and book.
+C++ Bitcoin library for 32-bit microcontrollers. The library supports [Arduino IDE](https://www.arduino.cc/), [ARM mbed](https://www.mbed.com/en/) and bare metal.<br>
+It provides a collection of convenient classes for Bitcoin: private and public keys, HD wallets, generation of the recovery phrases, PSBT and Electrum transaction formats, scripts — everything required for a hardware wallet or other bitcoin-powered device.
 
-Documentation: [https://micro-bitcoin.github.io/docs/](https://micro-bitcoin.github.io/docs/).
+The library should work on any decent 32-bit microcontroller, like esp32, riscV, stm32 series and others. It *doesn't work* on 8-bit microcontrollers like a classic Arduino as these microcontrollers are not powerful enough to run complicated crypto algorithms.
 
-# Classes and functions
+We use elliptic curve implementation from [trezor-crypto](https://github.com/trezor/trezor-firmware/tree/master/crypto). API is inspired by [Jimmy Song's](https://github.com/jimmysong/) Porgramming Blockchain class and the [book](https://github.com/jimmysong/programmingbitcoin).
 
-## Key management:
+## Documentation
 
-Classes:
+Check out our [tutorial](https://micro-bitcoin.github.io/#/tutorial/README) where we write a minimal hardware wallet, or browse the [API docs](https://micro-bitcoin.github.io/#/api/README). We also have a collection of [recepies](https://micro-bitcoin.github.io/#/recepies/README) for some common use-cases.
 
-- PrivateKey - a single private key class. Stores the 32-byte secret and network information (mainnet or testnet). Can be exported / imported as WIF. Inherits functionality from ECScalar - you can add, multiply, divide them, multiply PublicKey by it etc.
-- PublicKey - a single public key class. Inherits functionality from ECPoint class - you can add them, multiply by scalar etc.
-- HDPrivateKey - HD wallet private key with bip32 functionality. For common derivation pathes (bip44/49/84) automatically detects the script types. Can derive children and hardened children, can be derived from mnemonic or seed.
-- HDPublicKey - An HD public key corresponding to a particular HD private key. Can derive children, but not hardened.
+## Alternative libraries
 
-Handy functions:
+[DIY Bitcoin Hardware website](https://diybitcoinhardware.com/) has a nice collection of bitcoin-related projects, resources and libraries for makers.
 
-- `generateMnemonic(int strength)` - generates a new mnemonic using RNG
-- `generateMnemonic(const uint8_t * entropy_data, size_t length)` - generates mnemonic from byte array
-- `generateMnemonic(const char * entropy_string)` - generates mnemonic from the string
+A few bitcoin libraries:
 
-## Other Bitcoin classes
+- [secp256k1](https://github.com/bitcoin-core/secp256k1) — elliptic curve library  from Bitcoin Core and a [version](https://github.com/diybitcoinhardware/secp256k1-embedded) working with Arduino IDE & Mbed out of the box.
+- [libwally](https://github.com/ElementsProject/libwally-core/) - bitcoin library from Blockstream and a [version](https://github.com/diybitcoinhardware/libwally-embedded) working with Arduino IDE.
+- [f469-disco](https://github.com/diybitcoinhardware/f469-disco) - micropython bitcoin bundle for STM Discovery board and other platforms.
 
-- Signature - ECDSA signature
-- Script
-- Witness
-- Tx - transaction class
-- TxIn
-- TxOut
+## Installation
 
-Extra classes:
+The library is not listed in the Arduino Library manager yet, but you can download and install it manually.
 
-- PSBT - partially signed bitcoin transaction ([bip174](https://github.com/bitcoin/bips/blob/master/bip-0174.mediawiki))
-- ElectrumTx - unsigned electrum transaction, poorly implemented, consider using PSBT instead.
+[Download](https://github.com/micro-bitcoin/uBitcoin/archive/master.zip) the zip file from our [repository](https://github.com/micro-bitcoin/uBitcoin/) and select in Arduino IDE `Sketch` → `Include library` → `Add .ZIP library...`.
 
-## Elliptic curve math
+Or clone it into your `Documents/Arduino/libraries` folder:
 
-- ECScalar - a 256-bit number modulo N (curve order)
-- ECPoint - a point on an elliptic curve (secp256k1)
+```sh
+git clone https://github.com/micro-bitcoin/uBitcoin.git
+```
 
-## Hash functions
+When installed you will also see a few examples in `File` → `Examples` → `Bitcoin` menu.
 
-Hash functions defined in Hash.h file. 
+## Basic usage example
 
-Single line functions:
+First, don't forget to include necessary headers:
 
-- sha256
-- sha256Hmac
-- sha512
-- sha512Hmac
-- rmd160
-- hash160 - rmd160(sha256(m))
-- doubleSha
+```cpp
+// we use these two in our sketch:
+#include "Bitcoin.h"
+#include "PSBT.h"       // if using PSBT functionality
+// other headers of the library
+#include "Conversion.h" // to get access to functions like toHex() or fromBase64()
+#include "Hash.h"       // if using hashes in your code
+#include "Electrum.h"   // partial support of Electrum transaction format
+```
 
-And corresponding hash classes (with HMAC support):
+Now we can write a simple example that does the following:
 
-- SHA256
-- SHA512
-- RMD160
-- Hash160
-- DoubleSha
+1. Creates a master private key from a recovery phrase and empty password
+2. Derives account and prints master public key for a watch-only wallet (`zpub` in this case)
+3. Derives and print first segwit address
+4. Parses, signs and prints signed PSBT transaction
 
-# Future development
+```cpp
+// derive master private key
+HDPrivateKey hd("add good charge eagle walk culture book inherit fan nature seek repair", "");
+// derive native segwit account (bip-84) for tesnet
+HDPrivateKey account = hd.derive("m/84'/1'/0'/");
+// print xpub: vpub5YkPqVJTA7gjK...AH2rXvcAe3p781G
+Serial.println(account.xpub());
+// or change the account type to UNKNOWN_TYPE to get tpub
+HDPublicKey xpub = account.xpub();
+xpub.type = UNKNOWN_TYPE;
+// this time prints tpubDCnYy4Ty...dL4fLKsBFjFQwz
+Serial.println(xpub);
+// set back correct type to get segwit addresses by default
+xpub.type = P2WPKH;
+Serial.println(hd.fingerprint());
 
-## Roadmap:
+// print first address: tb1q6c8m3whsag5zadgl32nmhuf9q0qmtklws25n6g
+Serial.println(xpub.derive("m/0/0").address());
 
-- external key storage support (i.e. smart cards and chips like [ATECC608A](https://www.microchip.com/wwwproducts/en/ATECC608A))
-- cryptoaccelerators and TRNG support
-- handy functions to construct knowns script - HTLC, multisig, timelocks
-- script evaluation
-- tests (especially on the edge cases)
-- security audit of the code - improve on sidechannels etc
-- [micro-python](http://micropython.org/) bindings
-- lightning support (probably gonna be a separate library)
-- memory optimizations (internal storage for large transactions to reduce RAM footprint etc)
+PSBT tx;
+// parse unsigned transaction
+tx.parseBase64("cHNidP8BAHECAAAAAUQS8FqBzYocPDpeQmXBRBH7NwZHVJF39dYJDCXxq"
+"zf6AAAAAAD+////AqCGAQAAAAAAFgAUuP0WcSBmiAZYi91nX90hg/cZJ1U8AgMAAAAAABYAF"
+"C1RhUR+m/nFyQkPSlP0xmZVxlOqAAAAAAABAR/gkwQAAAAAABYAFNYPuLrw6igutR+Kp7vxJ"
+"QPBtdvuIgYDzkBZaAkSIz0P0BexiPYfzInxu9mMeuaOQa1fGEUXcWIYoyAeuFQAAIABAACAA"
+"AAAgAAAAAAAAAAAAAAiAgMxjOiFQofq7l9q42nsLA3Ta4zKpEs5eCnAvMnQaVeqsBijIB64V"
+"AAAgAEAAIAAAACAAQAAAAAAAAAA");
+// sign with the root key
+tx.sign(hd);
+// print signed transaction
+Serial.println(tx.toBase64());
+```
 
-## Classes to be implemented:
-
-- BlockHeader
-- MerkleProof
+Ready for more? Check out the [tutorial](https://micro-bitcoin.github.io/#/tutorial/README) and start writing your very own hardware wallet!

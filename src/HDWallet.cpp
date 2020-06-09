@@ -395,7 +395,7 @@ HDPublicKey HDPrivateKey::xpub() const{
     return HDPublicKey(p.point, chainCode, depth, parentFingerprint, childNumber, network, type);
 }
 HDPrivateKey HDPrivateKey::child(uint32_t index, bool hardened) const{
-    if(index >= 0x80000000){
+    if(index >= HARDENED_INDEX){
         hardened = true;
     }
     HDPrivateKey child;
@@ -406,8 +406,8 @@ HDPrivateKey HDPrivateKey::child(uint32_t index, bool hardened) const{
     uint8_t hash[20] = { 0 };
     hash160(sec, l, hash);
     memcpy(child.parentFingerprint, hash, 4);
-    if(hardened && index < 0x80000000){
-        index += 0x80000000;
+    if(hardened && index < HARDENED_INDEX){
+        index += HARDENED_INDEX;
     }
     child.childNumber = index;
     child.depth = depth+1;
@@ -417,36 +417,36 @@ HDPrivateKey HDPrivateKey::child(uint32_t index, bool hardened) const{
     if(hardened){
         if(depth == 0){
             switch(index){
-                case 0x80000000+44:
+                case HARDENED_INDEX+44:
                     child.type = P2PKH;
                     break;
-                case 0x80000000+49:
+                case HARDENED_INDEX+49:
                     child.type = P2SH_P2WPKH;
                     break;
-                case 0x80000000+84:
+                case HARDENED_INDEX+84:
                     child.type = P2WPKH;
                     break;
-                case 0x80000000+48:
+                case HARDENED_INDEX+48:
                     child.type = MULTISIG;
                     break;
-                case 0x80000000+45:
+                case HARDENED_INDEX+45:
                     child.type = P2SH;
                     break;
             }
         }
         if(depth == 1){
-            if(index == 0x80000001){
+            if(index == (HARDENED_INDEX+1)){
                 child.network = &Testnet;
             }
-            if(index == 0x80000000){
+            if(index == HARDENED_INDEX){
                 child.network = &Mainnet;
             }
         }
         if(depth == 3 && type == MULTISIG){
-            if(index == 0x80000001){
+            if(index == (HARDENED_INDEX+1)){
                 child.type = P2SH_P2WSH;
             }
-            if(index == 0x80000002){
+            if(index == (HARDENED_INDEX+2)){
                 child.type = P2WSH;
             }
         }
@@ -521,14 +521,14 @@ HDPrivateKey HDPrivateKey::derive(const char * path) const{
         }
         const char * pch = strchr(VALID_CHARS, cur[i]);
         uint32_t val = pch-VALID_CHARS;
-        if(derivation[current] >= 0x80000000){ // can't have anything after hardened
+        if(derivation[current] >= HARDENED_INDEX){ // can't have anything after hardened
             free(derivation);
             return pk;
         }
         if(val < 10){
             derivation[current] = derivation[current]*10 + val;
         }else{ // h or ' -> hardened
-            derivation[current] += 0x80000000;
+            derivation[current] += HARDENED_INDEX;
         }
     }
     return derive(derivation, derivationLen);
@@ -862,7 +862,7 @@ HDPublicKey HDPublicKey::derive(const char * path) const{
     size_t current = 0;
     for(size_t i=0; i<len; i++){
         if(cur[i] == '/'){ // next
-            if(derivation[current] >= 0x80000000){ // can't be hardened
+            if(derivation[current] >= HARDENED_INDEX){ // can't be hardened
                 free(derivation);
                 return pk;
             }

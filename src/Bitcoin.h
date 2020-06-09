@@ -77,6 +77,7 @@ const uint8_t networks_len = 4;
 
 // number of rounds for mnemonic to seed conversion
 #define PBKDF2_ROUNDS 2048
+#define HARDENED_INDEX 0x80000000
 
 /** \brief Common script types */
 enum ScriptType{

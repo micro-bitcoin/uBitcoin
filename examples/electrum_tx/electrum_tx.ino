@@ -17,18 +17,29 @@ ElectrumTx tx;
 
 void setup() {
   Serial.begin(115200);
+  Serial.println("Press any key");
   while(!Serial.available()){
     delay(100); //wait for any character
   }
   // trying to parse
-  int len_parsed = tx.parse(hex_tx);
-  if(len_parsed == 0){
+  tx.parse(hex_tx);
+  if(!tx){
     Serial.println("Can't parse tx");
     return;
   }
-  Serial.print("Transaction parsed. Length: ");
-  Serial.println(len_parsed);
-  Serial.println("Unsigned tx");
+  Serial.println("Transaction parsed.");
+  // print outputs
+  for(int i=0; i<tx.tx.outputsNumber; i++){
+    Serial.print(tx.tx.txOuts[i].address(key.network));
+    Serial.print(" -> ");
+    // Serial can't print uint64_t, so convert to int
+    Serial.print(int(tx.tx.txOuts[i].amount));
+    Serial.println(" sat");
+  }
+  Serial.print("Fee: ");
+  Serial.print(int(tx.fee()));
+  Serial.println(" sat");
+  Serial.println("Unsigned tx:");
   Serial.println(tx);
 
   tx.sign(key); 

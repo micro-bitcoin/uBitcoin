@@ -104,6 +104,8 @@ public:
     // TODO: add verify() function that checks all the fields (scripts, pubkeys etc)
     // TODO: add isChange() function that would verify the output with respect the inputs
     PSBT &operator=(PSBT const &other);
+    bool isValid() const{ return status==PARSING_DONE; };
+    explicit operator bool() const{ return isValid(); };
 };
 
 #endif // __PSBT_H__

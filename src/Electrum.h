@@ -41,6 +41,9 @@ public:
     uint64_t fee() const;
 
     ElectrumTx &operator=(ElectrumTx const &other);
+    
+    bool isValid() const{ return status==PARSING_DONE; };
+    explicit operator bool() const{ return isValid(); };
 };
 
 #endif // __ELECTRUM_H__

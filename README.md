@@ -1,7 +1,7 @@
 # Micro-Bitcoin
 
 C++ Bitcoin library for 32-bit microcontrollers. The library supports [Arduino IDE](https://www.arduino.cc/), [ARM mbed](https://www.mbed.com/en/) and bare metal.<br>
-It provides a collection of convenient classes for Bitcoin: private and public keys, HD wallets, generation of the recovery phrases, PSBT and Electrum transaction formats, scripts — everything required for a hardware wallet or other bitcoin-powered device.
+It provides a collection of convenient classes for Bitcoin: private and public keys, HD wallets, generation of the recovery phrases, PSBT transaction formats, scripts — everything required for a hardware wallet or other bitcoin-powered device.
 
 The library should work on any decent 32-bit microcontroller, like esp32, riscV, stm32 series and others. It *doesn't work* on 8-bit microcontrollers like a classic Arduino as these microcontrollers are not powerful enough to run complicated crypto algorithms.
 
@@ -46,7 +46,6 @@ First, don't forget to include necessary headers:
 // other headers of the library
 #include "Conversion.h" // to get access to functions like toHex() or fromBase64()
 #include "Hash.h"       // if using hashes in your code
-#include "Electrum.h"   // partial support of Electrum transaction format
 ```
 
 Now we can write a simple example that does the following:

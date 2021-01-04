@@ -11,6 +11,8 @@ We use elliptic curve implementation from [trezor-crypto](https://github.com/tre
 
 Check out our [tutorial](https://micro-bitcoin.github.io/#/tutorial/README) where we write a minimal hardware wallet, or browse the [API docs](https://micro-bitcoin.github.io/#/api/README). We also have a collection of [recepies](https://micro-bitcoin.github.io/#/recepies/README) for some common use-cases.
 
+Telegram group: https://t.me/arduinoBitcoin
+
 ## Alternative libraries
 
 [DIY Bitcoin Hardware website](https://diybitcoinhardware.com/) has a nice collection of bitcoin-related projects, resources and libraries for makers.

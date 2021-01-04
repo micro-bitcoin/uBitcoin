@@ -143,7 +143,7 @@ size_t TxOut::from_stream(ParseStream *s){
     status = PARSING_INCOMPLETE;
     size_t bytes_read = 0;
     while(s->available() && bytes_read+bytes_parsed<8){
-        uint8_t c = s->read();
+        uint64_t c = s->read();
         amount += (c << (8*(bytes_read+bytes_parsed-32)));
         bytes_read++;
     }

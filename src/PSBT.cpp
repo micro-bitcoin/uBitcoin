@@ -260,7 +260,7 @@ int PSBT::add(uint8_t section, const Script * k, const Script * v){
 					break;
 				}
 				uint8_t hash[32];
-				tx.hash(hash);
+				tempTx.hash(hash);
 				if(memcmp(hash, tx.txIns[input].hash, 32) != 0){
 					res = -3;
 					break;

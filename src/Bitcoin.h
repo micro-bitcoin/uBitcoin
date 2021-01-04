@@ -585,6 +585,9 @@ public:
     Witness witness;
     /** \brief checks if the input is segwit or not */
     bool isSegwit() const{ return (witness.count() > 0); };
+
+    bool isValid() const{ return status==PARSING_DONE; };
+    explicit operator bool() const{ return isValid(); };
 };
 
 /**
@@ -618,6 +621,9 @@ public:
 #if USE_STD_STRING
     std::string address(const Network * network = &DEFAULT_NETWORK) const{ return scriptPubkey.address(network); };
 #endif
+
+    bool isValid() const{ return status==PARSING_DONE; };
+    explicit operator bool() const{ return isValid(); };
 };
 /**
  *  \brief Transaction class.<br>
@@ -706,6 +712,9 @@ public:
     };
 
     Tx &operator=(Tx const &other);
+
+    bool isValid() const{ return status==PARSING_DONE; };
+    explicit operator bool() const{ return isValid(); };
 };
 
 #endif // __BITCOIN_H__

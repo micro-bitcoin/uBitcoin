@@ -104,7 +104,7 @@ const char * generateMnemonic(uint8_t numWords, const uint8_t * entropy_data, si
     uint8_t hash[32];
     sha256(entropy_data, dataLen, hash);
     size_t len = numWords*4/3;
-    return mnemonic_from_data(entropy_data, len);
+    return mnemonic_from_data(hash, len);
 }
 const char * generateMnemonic(const uint8_t * entropy_data, size_t dataLen){
     return generateMnemonic(24, entropy_data, dataLen);

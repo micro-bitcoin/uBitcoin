@@ -32,7 +32,7 @@ const Network Dogecoin = {
     { 0x01, 0x01, 0x01, 0x01 }, // Ypub
     { 0x01, 0x01, 0x01, 0x01 }, // Zpub
     3 // bip32 coin type (actually slip44?) https://github.com/satoshilabs/slips/blob/master/slip-0044.md
-}
+};
 
 const Network Mainnet = {
     0x00, // p2pkh

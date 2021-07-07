@@ -16,6 +16,24 @@ using std::string;
 #define String std::string
 #endif
 
+const Network Dogecoin = {
+    0x1e, // p2pkh
+    0x16, // p2sh
+    "bc", // DOESNT USE BECH32
+    0x9e, // wif
+    { 0x02, 0xfa, 0xc3, 0x98 }, // xprv
+    { 0x01, 0x01, 0x01, 0x01 }, // yprv
+    { 0x01, 0x01, 0x01, 0x01 }, // zprv
+    { 0x01, 0x01, 0x01, 0x01 }, // Yprv
+    { 0x01, 0x01, 0x01, 0x01 }, // Zprv
+    { 0x02, 0xfa, 0xca, 0xfd }, // xpub
+    { 0x01, 0x01, 0x01, 0x01 }, // ypub
+    { 0x01, 0x01, 0x01, 0x01 }, // zpub
+    { 0x01, 0x01, 0x01, 0x01 }, // Ypub
+    { 0x01, 0x01, 0x01, 0x01 }, // Zpub
+    3 // bip32 coin type (actually slip44?) https://github.com/satoshilabs/slips/blob/master/slip-0044.md
+};
+
 const Network Mainnet = {
     0x00, // p2pkh
     0x05, // p2sh
@@ -88,7 +106,7 @@ const Network Signet = {
     1 // bip32 coin type
 };
 
-const Network * networks[4] = { &Mainnet, &Testnet, &Regtest, &Signet };
+const Network * networks[5] = { &Mainnet, &Testnet, &Regtest, &Signet, &Dogecoin };
 
 const char * generateMnemonic(uint8_t numWords){
     if(numWords<12 || numWords > 24 || numWords % 3 != 0){

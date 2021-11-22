@@ -292,9 +292,9 @@ std::string Script::address(const Network * network) const{
     char buffer[100] = { 0 };
     size_t l = address(buffer, sizeof(buffer), network);
     if(l == 0){
-        return string("");
+        return std::string("");
     }
-    return string(buffer);
+    return std::string(buffer);
 }
 #endif
 size_t Script::length() const{

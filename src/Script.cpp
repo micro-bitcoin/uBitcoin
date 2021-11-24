@@ -4,6 +4,11 @@
 #include "OpCodes.h"
 #include "utility/segwit_addr.h"
 
+#if USE_STD_STRING
+using std::string;
+#define String string
+#endif
+
 #define MAX_SCRIPT_SIZE 10000
 
 //------------------------------------------------------------ Script
@@ -277,7 +282,7 @@ size_t Script::address(char * buffer, size_t len, const Network * network) const
     }
     return 0;
 }
-#if USE_ARDUINO_STRING
+#if USE_ARDUINO_STRING || USE_STD_STRING
 String Script::address(const Network * network) const{
     char buffer[100] = { 0 };
     size_t l = address(buffer, sizeof(buffer), network);
@@ -285,16 +290,6 @@ String Script::address(const Network * network) const{
         return String("");
     }
     return String(buffer);
-}
-#endif
-#if USE_STD_STRING
-std::string Script::address(const Network * network) const{
-    char buffer[100] = { 0 };
-    size_t l = address(buffer, sizeof(buffer), network);
-    if(l == 0){
-        return std::string("");
-    }
-    return std::string(buffer);
 }
 #endif
 size_t Script::length() const{

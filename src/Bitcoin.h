@@ -207,9 +207,12 @@ protected:
 public:
     PrivateKey();
     PrivateKey(const uint8_t secret_arr[32], bool use_compressed = true, const Network * net = &DEFAULT_NETWORK);
-    PrivateKey(const char * wifArr);
 #if USE_ARDUINO_STRING
     PrivateKey(const String wifString);
+#elif USE_STD_STRING
+    PrivateKey(const std::string wifString);
+#else
+    PrivateKey(const char * wifArr);
 #endif
     ~PrivateKey();
     /** \brief Length of the key in WIF format (52). In reality not always 52... */

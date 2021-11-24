@@ -5,6 +5,11 @@
 #include "Conversion.h"
 #include "utility/trezor/sha2.h"
 
+#if USE_STD_STRING
+using std::string;
+#define String string
+#endif
+
 //-------------------------------------------------------------------------------------- Transaction Input
 void TxIn::init(){
     outputIndex = 0;
@@ -563,26 +568,13 @@ int Tx::wtxid(uint8_t * id_arr) const{
     return 32;
 }
 
-#if USE_ARDUINO_STRING
+#if USE_ARDUINO_STRING || USE_STD_STRING
 String Tx::txid() const{
     uint8_t id[32];
     txid(id);
     return toHex(id, 32);
 }
 String Tx::wtxid() const{
-    uint8_t id[32];
-    wtxid(id);
-    return toHex(id, 32);
-}
-#endif
-
-#if USE_STD_STRING
-std::string Tx::txid() const{
-    uint8_t id[32];
-    txid(id);
-    return toHex(id, 32);
-}
-std::string Tx::wtxid() const{
     uint8_t id[32];
     wtxid(id);
     return toHex(id, 32);

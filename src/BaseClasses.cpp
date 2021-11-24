@@ -1,4 +1,10 @@
+#include "uBitcoin_conf.h"
 #include "BaseClasses.h"
+
+#if USE_STD_STRING
+using std::string;
+#define String string
+#endif
 
 size_t SerializeStream::serialize(const Streamable * s, size_t offset){
     return s->to_stream(this, offset);
@@ -134,7 +140,7 @@ size_t Readable::printTo(Print& p) const{
     return len-1;
 }
 #endif
-#if USE_ARDUINO_STRING
+#if USE_ARDUINO_STRING || USE_STD_STRING
 String Readable::toString() const{
     size_t len = this->stringLength()+1;
     char * arr = (char *)calloc(len, sizeof(char));
@@ -144,20 +150,10 @@ String Readable::toString() const{
     return s;
 };
 #endif
-#if USE_STD_STRING
-std::string Readable::toString() const{
-    size_t len = this->stringLength()+1;
-    char * arr = (char *)calloc(len, sizeof(char));
-    toString(arr, len);
-    std::string s = arr;
-    free(arr);
-    return s;
-};
-#endif
 
 /************ Streamable Class ************/
 
-#if USE_ARDUINO_STRING
+#if USE_ARDUINO_STRING || USE_STD_STRING
 String Streamable::serialize(size_t offset, size_t len) const{
     if(len == 0){
         len = (length()-offset);
@@ -165,18 +161,6 @@ String Streamable::serialize(size_t offset, size_t len) const{
     char * arr = (char *)calloc(2*len+1, sizeof(char));
     serialize(arr, 2*len, offset, HEX_ENCODING);
     String s = arr;
-    free(arr);
-    return s;
-};
-#endif
-#if USE_STD_STRING
-std::string Streamable::serialize(size_t offset, size_t len) const{
-    if(len == 0){
-        len = (length()-offset);
-    }
-    char * arr = (char *)calloc(2*len+1, sizeof(char));
-    serialize(arr, 2*len, offset, HEX_ENCODING);
-    std::string s = arr;
     free(arr);
     return s;
 };

@@ -652,7 +652,7 @@ uint8_t PSBT::sign(const HDPrivateKey root){
 }
 
 // TODO: refactor, super unefficient
-#if USE_ARDUINO_STRING
+#if USE_ARDUINO_STRING || USE_STD_STRING
 size_t PSBT::parseBase64(String b64){
 	String s = base64ToHex(b64);
 	parse(s);

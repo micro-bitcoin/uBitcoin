@@ -129,12 +129,8 @@ size_t mnemonicToEntropy(const char * mnemonic, size_t mnemonicLen, uint8_t * ou
     memcpy(output, res, entropy_len);
     return entropy_len;
 }
-#if USE_ARDUINO_STRING
+#if USE_ARDUINO_STRING || USE_STD_STRING
 size_t mnemonicToEntropy(String mnemonic, uint8_t * output, size_t outputLen){
-    return mnemonicToEntropy(mnemonic.c_str(), mnemonic.length(), output, outputLen);
-}
-#elif USE_STD_STRING
-size_t mnemonicToEntropy(std::string mnemonic, uint8_t * output, size_t outputLen){
     return mnemonicToEntropy(mnemonic.c_str(), mnemonic.length(), output, outputLen);
 }
 #else
@@ -397,18 +393,11 @@ int PublicKey::legacyAddress(char * address, size_t len, const Network * network
 
     return toBase58Check(addr, 21, address, len);
 }
-#if USE_ARDUINO_STRING
+#if USE_ARDUINO_STRING || USE_STD_STRING
 String PublicKey::legacyAddress(const Network * network) const{
     char addr[40] = { 0 };
     legacyAddress(addr, sizeof(addr), network);
     return String(addr);
-}
-#endif
-#if USE_STD_STRING
-string PublicKey::legacyAddress(const Network * network) const{
-    char addr[40] = { 0 };
-    legacyAddress(addr, sizeof(addr), network);
-    return string(addr);
 }
 #endif
 int PublicKey::segwitAddress(char address[], size_t len, const Network * network) const{
@@ -423,18 +412,11 @@ int PublicKey::segwitAddress(char address[], size_t len, const Network * network
     segwit_addr_encode(address, network->bech32, 0, hash, 20);
     return 76;
 }
-#if USE_ARDUINO_STRING
+#if USE_ARDUINO_STRING || USE_STD_STRING
 String PublicKey::segwitAddress(const Network * network) const{
     char addr[76] = { 0 };
     segwitAddress(addr, sizeof(addr), network);
     return String(addr);
-}
-#endif
-#if USE_STD_STRING
-string PublicKey::segwitAddress(const Network * network) const{
-    char addr[76] = { 0 };
-    segwitAddress(addr, sizeof(addr), network);
-    return string(addr);
 }
 #endif
 int PublicKey::nestedSegwitAddress(char address[], size_t len, const Network * network) const{
@@ -452,18 +434,11 @@ int PublicKey::nestedSegwitAddress(char address[], size_t len, const Network * n
 
     return toBase58Check(addr, 21, address, len);
 }
-#if USE_ARDUINO_STRING
+#if USE_ARDUINO_STRING || USE_STD_STRING
 String PublicKey::nestedSegwitAddress(const Network * network) const{
     char addr[40] = { 0 };
     nestedSegwitAddress(addr, sizeof(addr), network);
     return String(addr);
-}
-#endif
-#if USE_STD_STRING
-string PublicKey::nestedSegwitAddress(const Network * network) const{
-    char addr[40] = { 0 };
-    nestedSegwitAddress(addr, sizeof(addr), network);
-    return string(addr);
 }
 #endif
 Script PublicKey::script(ScriptType type) const{
@@ -540,18 +515,11 @@ int PrivateKey::wif(char * wifArr, size_t wifSize) const{
     memset(wifHex, 0, sizeof(wifHex)); // secret should not stay in RAM
     return l;
 }
-#if USE_ARDUINO_STRING
+#if USE_ARDUINO_STRING || USE_STD_STRING
 String PrivateKey::wif() const{
     char wifString[53] = { 0 };
     wif(wifString, sizeof(wifString));
     return String(wifString);
-}
-#endif
-#if USE_STD_STRING
-std::string PrivateKey::wif() const{
-    char wifString[53] = { 0 };
-    wif(wifString, sizeof(wifString));
-    return std::string(wifString);
 }
 #endif
 int PrivateKey::fromWIF(const char * wifArr, size_t wifSize){
@@ -608,7 +576,7 @@ int PrivateKey::segwitAddress(char * address, size_t len) const{
 int PrivateKey::nestedSegwitAddress(char * address, size_t len) const{
     return pubKey.nestedSegwitAddress(address, len, network);
 }
-#if USE_ARDUINO_STRING
+#if USE_ARDUINO_STRING || USE_STD_STRING
 String PrivateKey::address() const{
     return pubKey.address(network);
 }
@@ -619,20 +587,6 @@ String PrivateKey::segwitAddress() const{
     return pubKey.segwitAddress(network);
 }
 String PrivateKey::nestedSegwitAddress() const{
-    return pubKey.nestedSegwitAddress(network);
-}
-#endif
-#if USE_STD_STRING
-string PrivateKey::address() const{
-    return pubKey.address(network);
-}
-string PrivateKey::legacyAddress() const{
-    return pubKey.legacyAddress(network);
-}
-string PrivateKey::segwitAddress() const{
-    return pubKey.segwitAddress(network);
-}
-string PrivateKey::nestedSegwitAddress() const{
     return pubKey.nestedSegwitAddress(network);
 }
 #endif
@@ -649,11 +603,12 @@ Signature PrivateKey::sign(const uint8_t hash[32]) const{
     sig.index = i;
     return sig;
 }
-PrivateKey::PrivateKey(const char * wifArr){
-    fromWIF(wifArr);
-}
-#if USE_ARDUINO_STRING
+#if USE_ARDUINO_STRING || USE_STD_STRING
 PrivateKey::PrivateKey(const String wifString){
     fromWIF(wifString.c_str());
+}
+#else
+PrivateKey::PrivateKey(const char * wifArr){
+    fromWIF(wifArr);
 }
 #endif

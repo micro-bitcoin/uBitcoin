@@ -12,6 +12,7 @@
 
 #if USE_STD_STRING
 using std::string;
+#define String string
 #endif
 
 // ---------------------------------------------------------------- HDPrivateKey class
@@ -55,13 +56,7 @@ HDPrivateKey::HDPrivateKey(const char * mnemonic, size_t mnemonicSize, const cha
     init();
     fromMnemonic(mnemonic, mnemonicSize, password, passwordSize, net, progress_callback);
 }
-#if USE_STD_STRING
-HDPrivateKey::HDPrivateKey(std::string mnemonic, std::string password, const Network * net, void (*progress_callback)(float)){
-    init();
-    fromMnemonic(mnemonic, password, net, progress_callback);
-}
-#endif
-#if USE_ARDUINO_STRING
+#if USE_ARDUINO_STRING || USE_STD_STRING
 HDPrivateKey::HDPrivateKey(String mnemonic, String password, const Network * net, void (*progress_callback)(float)){
     init();
     fromMnemonic(mnemonic, password, net, progress_callback);
@@ -272,12 +267,7 @@ int HDPrivateKey::fromMnemonic(const char * mnemonic, size_t mnemonicSize, const
     fromSeed(seed, sizeof(seed), net);
     return 1;
 }
-#if USE_STD_STRING
-int HDPrivateKey::fromMnemonic(std::string mnemonic, std::string password, const Network * net, void (*progress_callback)(float)){
-    return fromMnemonic(mnemonic.c_str(), mnemonic.length(), password.c_str(), password.length(), net, progress_callback);
-}
-#endif
-#if USE_ARDUINO_STRING
+#if USE_ARDUINO_STRING || USE_STD_STRING
 int HDPrivateKey::fromMnemonic(String mnemonic, String password, const Network * net, void (*progress_callback)(float)){
     return fromMnemonic(mnemonic.c_str(), mnemonic.length(), password.c_str(), password.length(), net, progress_callback);
 }
@@ -299,32 +289,13 @@ int HDPrivateKey::address(char * addr, size_t len) const{
             return segwitAddress(addr, len);
     }
 }
-#if USE_ARDUINO_STRING
+#if USE_ARDUINO_STRING || USE_STD_STRING
 String HDPrivateKey::xprv() const{
     char arr[112] = { 0 };
     xprv(arr, sizeof(arr));
     return String(arr);
 }
 String HDPrivateKey::address() const{
-    switch(type){
-        case P2WPKH:
-            return segwitAddress();
-        case P2SH_P2WPKH:
-            return nestedSegwitAddress();
-        case P2PKH:
-            return legacyAddress();
-        default:
-            return segwitAddress();
-    }
-}
-#endif
-#if USE_STD_STRING
-string HDPrivateKey::xprv() const{
-    char arr[112] = { 0 };
-    xprv(arr, sizeof(arr));
-    return string(arr);
-}
-string HDPrivateKey::address() const{
     switch(type){
         case P2WPKH:
             return segwitAddress();
@@ -375,14 +346,7 @@ void HDPrivateKey::fingerprint(uint8_t arr[4]) const{
     hash160(secArr, l, hash);
     memcpy(arr, hash, 4);
 }
-#if USE_STD_STRING
-std::string HDPrivateKey::fingerprint() const{
-    uint8_t arr[4];
-    fingerprint(arr);
-    return toHex(arr, 4);
-}
-#endif
-#if USE_ARDUINO_STRING
+#if USE_ARDUINO_STRING || USE_STD_STRING
 String HDPrivateKey::fingerprint() const{
     uint8_t arr[4];
     fingerprint(arr);
@@ -734,32 +698,13 @@ int HDPublicKey::address(char * addr, size_t len) const{
             return PublicKey::segwitAddress(addr, len, network);
     }
 }
-#if USE_ARDUINO_STRING
+#if USE_ARDUINO_STRING || USE_STD_STRING
 String HDPublicKey::xpub() const{
     char arr[114] = { 0 };
     xpub(arr, sizeof(arr));
     return String(arr);
 }
 String HDPublicKey::address() const{
-    switch(type){
-        case P2WPKH:
-            return PublicKey::segwitAddress(network);
-        case P2SH_P2WPKH:
-            return PublicKey::nestedSegwitAddress(network);
-        case P2PKH:
-            return PublicKey::legacyAddress(network);
-        default:
-            return PublicKey::segwitAddress(network);
-    }
-}
-#endif
-#if USE_STD_STRING
-string HDPublicKey::xpub() const{
-    char arr[114] = { 0 };
-    xpub(arr, sizeof(arr));
-    return string(arr);
-}
-string HDPublicKey::address() const{
     switch(type){
         case P2WPKH:
             return PublicKey::segwitAddress(network);
@@ -780,14 +725,7 @@ void HDPublicKey::fingerprint(uint8_t arr[4]) const{
     hash160(secArr, l, hash);
     memcpy(arr, hash, 4);
 }
-#if USE_STD_STRING
-std::string HDPublicKey::fingerprint() const{
-    uint8_t arr[4];
-    fingerprint(arr);
-    return toHex(arr, 4);
-}
-#endif
-#if USE_ARDUINO_STRING
+#if USE_ARDUINO_STRING || USE_STD_STRING
 String HDPublicKey::fingerprint() const{
     uint8_t arr[4];
     fingerprint(arr);

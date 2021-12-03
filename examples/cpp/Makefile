@@ -44,9 +44,12 @@ C_SOURCES += $(wildcard $(LIB_DIR)/utility/trezor/*.c) \
 CFLAGS = -I$(LIB_DIR)
 CPPFLAGS = -I$(LIB_DIR) -DUSE_STDONLY
 
-OBJS = $(patsubst $(SRC_DIR)/%, $(BUILD_DIR)/%.o, $(patsubst $(LIB_DIR)/%, $(BUILD_DIR)/%.o, $(C_SOURCES) $(CXX_SOURCES)))
+OBJS = $(patsubst $(SRC_DIR)/%, $(BUILD_DIR)/src/%.o, \
+		$(patsubst $(LIB_DIR)/%, $(BUILD_DIR)/lib/%.o, \
+		$(C_SOURCES) $(CXX_SOURCES)))
 
-vpath %.cpp $(sort $(dir $(CXX_SOURCES)))
+vpath %.cpp $(SRC_DIR)
+vpath %.cpp $(LIB_DIR)
 vpath %.c $(LIB_DIR)
 
 .PHONY: clean all run
@@ -59,16 +62,20 @@ run: $(BUILD_DIR)/$(TARGET_EXEC)
 $(BUILD_DIR)/$(TARGET_EXEC): $(OBJS)
 	$(CXX) $(OBJS) $(CPPFLAGS) -o $@
 
-# c source
-$(BUILD_DIR)/%.c.o: %.c
+# lib c sources
+$(BUILD_DIR)/lib/%.c.o: %.c
 	$(MKDIR_P) $(dir $@)
 	$(CC) -c $(CFLAGS) $< -o $@
 
-# cpp source
-$(BUILD_DIR)/%.cpp.o: %.cpp
+# lib cpp sources
+$(BUILD_DIR)/lib/%.cpp.o: %.cpp
+	$(MKDIR_P) $(dir $@)
+	$(CXX) -c $(CPPFLAGS) $< -o $@
+
+# cpp sources
+$(BUILD_DIR)/src/%.cpp.o: %.cpp
 	$(MKDIR_P) $(dir $@)
 	$(CXX) -c $(CPPFLAGS) $< -o $@
 
 clean:
 	$(RM_R) $(BUILD_DIR)
-	$(RM) $(TARGET_EXEC)

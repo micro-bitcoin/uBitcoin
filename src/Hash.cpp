@@ -16,13 +16,7 @@ static size_t hashData(HashAlgorithm * algo, const uint8_t * data, size_t len, u
 
 #if USE_ARDUINO_STRING || USE_STD_STRING
 static size_t hashString(HashAlgorithm * algo, const String s, uint8_t * hash){
-    size_t len = s.length();
-    char * arr;
-    arr = (char *)malloc(len+1);
-    memcpy(arr, s.c_str(), len+1);
-    size_t r = hashData(algo, (uint8_t *)arr, len, hash);
-    free(arr);
-    return r;
+    return hashData(algo, (const uint8_t *)s.c_str(), s.length(), hash);
 }
 #endif
 

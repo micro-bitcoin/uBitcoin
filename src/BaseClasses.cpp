@@ -25,12 +25,15 @@ ParseByteStream::ParseByteStream(const uint8_t * arr, size_t length, encoding_fo
     }
     buf = arr;
 }
+// TODO: call prev constructor
 ParseByteStream::ParseByteStream(const char * arr, encoding_format f){
     last = -1;
+    format = f;
     cursor = 0;
-    len = strlen(arr);
     if(arr == NULL){
         len = 0;
+    }else{
+        len = strlen(arr);
     }
     buf = (const uint8_t *) arr;
 }

@@ -3,6 +3,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include "utility/trezor/memzero.h"
 
 #if USE_STD_STRING
 using std::string;
@@ -19,7 +20,7 @@ size_t toHex(const uint8_t * array, size_t arraySize, char * output, size_t outp
     if(outputSize < 2*arraySize){
         return 0;
     }
-    memset(output, 0, outputSize);
+    memzero(output, outputSize);
 
     for(size_t i=0; i < arraySize; i++){
         output[2*i] = (array[i] >> 4) + '0';
@@ -45,7 +46,7 @@ String toHex(const uint8_t * array, size_t arraySize){
 
     String result(output);
 
-    memset(output, 0, outputSize);
+    memzero(output, outputSize);
     free(output);
 
     return result;
@@ -92,7 +93,7 @@ uint8_t hexToVal(char c){
 
 size_t fromHex(const char * hex, size_t hexLen, uint8_t * array, size_t arraySize){
     if(array == NULL || hex == NULL){ return 0; }
-    memset(array, 0, arraySize);
+    memzero(array, arraySize);
     // ignoring all non-hex characters in the beginning
     size_t offset = 0;
     while(offset < hexLen){
@@ -140,7 +141,7 @@ size_t fromBin(const char * bin, size_t binLen, uint8_t * array, size_t arraySiz
     len += 1; // not aligned to 8 bits
   }
   // zero output array
-  memset(array, 0, arraySize);
+  memzero(array, arraySize);
   for(size_t i = 0; i < binLen; i++){
     // we go in reverse order (from the end of the string)
     uint8_t exp = (i%8); // shift
@@ -164,7 +165,7 @@ size_t toBin(const uint8_t * array, size_t arraySize, char * output, size_t outp
   if(outputSize < arraySize*8){
     return 0;
   }
-  memset(output, 0, outputSize);
+  memzero(output, outputSize);
   for(size_t i=0; i<arraySize; i++){
     for(size_t j=0; j<8; j++){
       if(((array[i] >> j) & 1) == 1){
@@ -188,7 +189,7 @@ String toBin(const uint8_t * array, size_t arraySize){
 
     String result(output);
 
-    memset(output, 0, outputSize);
+    memzero(output, outputSize);
     free(output);
 
     return result;
@@ -267,7 +268,7 @@ size_t toBase58(const uint8_t * array, size_t arraySize, char * output, size_t o
         return 0;
     }
 
-    memset(output, 0, outputSize);
+    memzero(output, outputSize);
 
     // array copy for manipulations
     size_t bufferSize = arraySize - zeroCount;
@@ -312,7 +313,7 @@ size_t toBase58(const uint8_t * array, size_t arraySize, char * output, size_t o
         }
     }
     size_t l = size+zeroCount-shift;
-    memset(output + l, 0, outputSize-l);
+    memzero(output + l, outputSize-l);
     return l;
 }
 #if USE_ARDUINO_STRING || USE_STD_STRING
@@ -339,7 +340,7 @@ size_t toBase58Check(const uint8_t * array, size_t arraySize, char * output, siz
     memcpy(arr+arraySize, hash, 4);
 
     size_t l = toBase58(arr, arraySize+4, output, outputSize);
-    memset(arr, 0, arraySize+4); // secret should not stay in RAM
+    memzero(arr, arraySize+4); // secret should not stay in RAM
     free(arr);
     return l;
 }
@@ -366,7 +367,7 @@ size_t fromBase58Length(const char * array, size_t arraySize){
 
 size_t fromBase58(const char * encoded, size_t encodedSize, uint8_t * output, size_t outputSize){
     if(encoded == NULL || output == NULL){ return 0; }
-    memset(output, 0, outputSize);
+    memzero(output, outputSize);
 
     size_t l;
     // looking for the end of char array
@@ -443,7 +444,7 @@ size_t fromBase58Check(const char * encoded, size_t encodedSize, uint8_t * outpu
 
     memcpy(output, arr, l-4);
 
-    memset(arr, 0, outputSize+4); // secret should not stay in RAM
+    memzero(arr, outputSize+4); // secret should not stay in RAM
     free(arr);
     return l-4;
 }
@@ -494,7 +495,7 @@ size_t toBase43(const uint8_t * array, size_t arraySize, char * output, size_t o
         return 0;
     }
 
-    memset(output, 0, outputSize);
+    memzero(output, outputSize);
 
     // array copy for manipulations
     size_t bufferSize = arraySize - zeroCount;
@@ -539,7 +540,7 @@ size_t toBase43(const uint8_t * array, size_t arraySize, char * output, size_t o
         }
     }
     size_t l = size+zeroCount-shift;
-    memset(output + l, 0, outputSize-l);
+    memzero(output + l, outputSize-l);
     return l;
 }
 #if (USE_STD_STRING || USE_ARDUINO_STRING)
@@ -563,7 +564,7 @@ size_t fromBase43Length(const char * array, size_t arraySize){
 
 size_t fromBase43(const char * encoded, size_t encodedSize, uint8_t * output, size_t outputSize){
     if(encoded == NULL || output == NULL){ return 0; }
-    memset(output, 0, outputSize);
+    memzero(output, outputSize);
 
     size_t l;
     // looking for the end of char array
@@ -643,7 +644,7 @@ size_t toBase64Length(const uint8_t * array, size_t arraySize){
 }
 size_t toBase64(const uint8_t * array, size_t arraySize, char * output, size_t outputSize){
     if(array == NULL || output == NULL){ return 0; }
-    memset(output, 0, outputSize);
+    memzero(output, outputSize);
     size_t cur = 0;
     if(outputSize < toBase64Length(array, arraySize)){
         return 0;
@@ -699,13 +700,13 @@ size_t fromBase64Length(const char * array, size_t arraySize){
 size_t fromBase64(const char * encoded, size_t encodedSize, uint8_t * output, size_t outputSize){
     if(encoded == NULL || output == NULL){ return 0; }
     size_t cur = 0;
-    memset(output, 0, outputSize);
+    memzero(output, outputSize);
     if(outputSize < fromBase64Length(encoded, encodedSize)){
         return 0;
     }
     while(cur*4 < encodedSize){
         if(cur*4+3 >= encodedSize){
-            memset(output, 0, outputSize);
+            memzero(output, outputSize);
             return 0;
         }
         uint32_t val = 0;
@@ -718,7 +719,7 @@ size_t fromBase64(const char * encoded, size_t encodedSize, uint8_t * output, si
                     if(i==3){
                         val = (val >> 2);
                         if(outputSize < 3*cur+2){
-                            memset(output, 0, outputSize);
+                            memzero(output, outputSize);
                             return 0;
                         }
                         intToBigEndian(val, output+3*cur, 2);
@@ -727,19 +728,19 @@ size_t fromBase64(const char * encoded, size_t encodedSize, uint8_t * output, si
                     if(i==2){
                         val = (val >> 4);
                         if(outputSize < 3*cur+1){
-                            memset(output, 0, outputSize);
+                            memzero(output, outputSize);
                             return 0;
                         }
                         output[3*cur] = (val & 0xFF);
                         return 3*cur + 1;
                     }
                 }
-                memset(output, 0, outputSize);
+                memzero(output, outputSize);
                 return 0;
             }
         }
         if(outputSize < 3*(cur+1)){
-            memset(output, 0, outputSize);
+            memzero(output, outputSize);
             return 0;
         }
         intToBigEndian(val, output+3*cur, 3);

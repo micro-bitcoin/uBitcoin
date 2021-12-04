@@ -9,6 +9,7 @@
 #include "utility/trezor/bignum.h"
 #include "utility/trezor/ecdsa.h"
 #include "utility/trezor/secp256k1.h"
+#include "utility/trezor/memzero.h"
 
 #if USE_STD_STRING
 using std::string;
@@ -19,9 +20,9 @@ using std::string;
 
 void HDPrivateKey::init(){
     reset();
-    memset(chainCode, 0, 32);
+    memzero(chainCode, 32);
     depth = 0;
-    memset(parentFingerprint, 0, 4);
+    memzero(parentFingerprint, 4);
     childNumber = 0;
     type = UNKNOWN_TYPE;
     status = PARSING_DONE;
@@ -45,7 +46,7 @@ HDPrivateKey::HDPrivateKey(const uint8_t secret[32],
     if(parent_fingerprint_arr != NULL){
         memcpy(parentFingerprint, parent_fingerprint_arr, 4);
     }else{
-        memset(parentFingerprint, 0, 4);
+        memzero(parentFingerprint, 4);
     }
 }
 HDPrivateKey::HDPrivateKey(const char * xprvArr){
@@ -63,8 +64,8 @@ HDPrivateKey::HDPrivateKey(String mnemonic, String password, const Network * net
 }
 #endif
 HDPrivateKey::~HDPrivateKey(void) {
-    memset(chainCode, 0, 32);
-    memset(num, 0, 32);
+    memzero(chainCode, 32);
+    memzero(num, 32);
 }
 size_t HDPrivateKey::to_bytes(uint8_t * arr, size_t len) const{
     uint8_t hex[78] = { 0 };
@@ -438,7 +439,7 @@ HDPrivateKey HDPrivateKey::child(uint32_t index, bool hardened) const{
     uint8_t secret[32];
     r.getSecret(secret);
     child.setSecret(secret);
-    memset(secret, 0, 32);
+    memzero(secret, 32);
     return child;
 }
 
@@ -644,9 +645,9 @@ size_t HDPublicKey::from_str(const char * xpubArr, size_t xpubLen){
 
 HDPublicKey::HDPublicKey():PublicKey(){
     compressed = true;
-    memset(chainCode, 0, 32);
+    memzero(chainCode, 32);
     depth = 0;
-    memset(parentFingerprint, 0, 4);
+    memzero(parentFingerprint, 4);
     childNumber = 0;
     network = &DEFAULT_NETWORK;
     type = UNKNOWN_TYPE;
@@ -669,7 +670,7 @@ HDPublicKey::HDPublicKey(const uint8_t p[64],
     if(parent_fingerprint_arr != NULL){
         memcpy(parentFingerprint, parent_fingerprint_arr, 4);
     }else{
-        memset(parentFingerprint, 0, 4);
+        memzero(parentFingerprint, 4);
     }
 }
 HDPublicKey::HDPublicKey(const char * xpubArr){
@@ -678,8 +679,8 @@ HDPublicKey::HDPublicKey(const char * xpubArr){
     from_str(xpubArr, strlen(xpubArr));
 }
 HDPublicKey::~HDPublicKey(void) {
-    memset(point, 0, 64);
-    memset(chainCode, 0, 32);
+    memzero(point, 64);
+    memzero(chainCode, 32);
 }
 int HDPublicKey::xpub(char * arr, size_t len) const{
     uint8_t hex[78] = { 0 };

@@ -10,6 +10,7 @@
 #include "utility/trezor/secp256k1.h"
 #include "utility/segwit_addr.h"
 #include "utility/trezor/bip39.h"
+#include "utility/trezor/memzero.h"
 
 #if USE_STD_STRING
 using std::string;
@@ -168,8 +169,8 @@ bool checkMnemonic(const String mnemonic){
 
 Signature::Signature(){
     reset();
-    memset(r, 0, 32);
-    memset(s, 0, 32);
+    memzero(r, 32);
+    memzero(s, 32);
 }
 Signature::Signature(const uint8_t r_arr[32], const uint8_t s_arr[32]){
     reset();
@@ -204,8 +205,8 @@ size_t Signature::from_stream(ParseStream *stream){
     }
     if(status == PARSING_DONE){
         bytes_parsed = 0;
-        memset(r, 0, 32);
-        memset(s, 0, 32);
+        memzero(r, 32);
+        memzero(s, 32);
     }
     status = PARSING_INCOMPLETE;
     size_t bytes_read = 0;
@@ -321,7 +322,7 @@ size_t Signature::fromDer(const uint8_t * raw, size_t rawLen){
     return Signature::from_stream(&stream);
 }
 size_t Signature::der(uint8_t * bytes, size_t len) const{
-    memset(bytes, 0, len);
+    memzero(bytes, len);
     uint8_t _rlen = rlen();
     uint8_t _slen = slen();
     bytes[0] = 0x30;
@@ -380,7 +381,7 @@ void Signature::fromBin(const uint8_t * arr, size_t len){
 // ---------------------------------------------------------------- PublicKey class
 
 int PublicKey::legacyAddress(char * address, size_t len, const Network * network) const{
-    memset(address, 0, len);
+    memzero(address, len);
 
     uint8_t buffer[20];
     uint8_t sec_arr[65] = { 0 };
@@ -401,7 +402,7 @@ String PublicKey::legacyAddress(const Network * network) const{
 }
 #endif
 int PublicKey::segwitAddress(char address[], size_t len, const Network * network) const{
-    memset(address, 0, len);
+    memzero(address, len);
     if(len < 76){ // TODO: 76 is too much for native segwit
         return 0;
     }
@@ -420,7 +421,7 @@ String PublicKey::segwitAddress(const Network * network) const{
 }
 #endif
 int PublicKey::nestedSegwitAddress(char address[], size_t len, const Network * network) const{
-    memset(address, 0, len);
+    memzero(address, len);
     uint8_t script[22] = { 0 };
     script[0] = 0x00;
     script[1] = 0x14;
@@ -484,7 +485,7 @@ size_t PrivateKey::from_stream(ParseStream *s){
 }
 PrivateKey::PrivateKey(void){
     reset();
-    memset(num, 0, 32); // empty key
+    memzero(num, 32); // empty key
     network = &DEFAULT_NETWORK;
 }
 PrivateKey::PrivateKey(const uint8_t * secret_arr, bool use_compressed, const Network * net){
@@ -497,10 +498,10 @@ PrivateKey::PrivateKey(const uint8_t * secret_arr, bool use_compressed, const Ne
 PrivateKey::~PrivateKey(void) {
     reset();
     // erase secret key from memory
-    memset(num, 0, 32);
+    memzero(num, 32);
 }
 int PrivateKey::wif(char * wifArr, size_t wifSize) const{
-    memset(wifArr, 0, wifSize);
+    memzero(wifArr, wifSize);
 
     uint8_t wifHex[34] = { 0 }; // prefix + 32 bytes secret (+ compressed )
     size_t len = 33;
@@ -512,7 +513,7 @@ int PrivateKey::wif(char * wifArr, size_t wifSize) const{
     }
     size_t l = toBase58Check(wifHex, len, wifArr, wifSize);
 
-    memset(wifHex, 0, sizeof(wifHex)); // secret should not stay in RAM
+    memzero(wifHex, sizeof(wifHex)); // secret should not stay in RAM
     return l;
 }
 #if USE_ARDUINO_STRING || USE_STD_STRING
@@ -526,7 +527,7 @@ int PrivateKey::fromWIF(const char * wifArr, size_t wifSize){
     uint8_t arr[40] = { 0 };
     size_t l = fromBase58Check(wifArr, wifSize, arr, sizeof(arr));
     if( (l < 33) || (l > 34) ){
-        memset(num, 0, 32);
+        memzero(num, 32);
         return 0;
     }
     bool compressed;
@@ -550,7 +551,7 @@ int PrivateKey::fromWIF(const char * wifArr, size_t wifSize){
         compressed = false;
     }
     memcpy(num, arr+1, 32);
-    memset(arr, 0, 40); // clear memory
+    memzero(arr, 40); // clear memory
 
     pubKey = *this * GeneratorPoint;
     pubKey.compressed = compressed;

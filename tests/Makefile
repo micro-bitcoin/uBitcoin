@@ -38,7 +38,7 @@ vpath %.cpp $(LIB_DIR)
 vpath %.c $(LIB_DIR)
 
 TESTS=$(wildcard $(SRC_DIR)/*.cpp)
-TESTOBJS=$(patsubst $(SRC_DIR)/%.cpp, $(BUILD_DIR)/test/%.o, $(TESTS))
+TESTOBJS=$(patsubst $(SRC_DIR)/%.cpp, $(BUILD_DIR)/test/%.cpp.o, $(TESTS))
 TESTBINS=$(patsubst $(SRC_DIR)/%.cpp, $(BUILD_DIR)/%.test, $(TESTS))
 
 
@@ -48,6 +48,9 @@ all: $(TESTBINS)
 
 run: $(TESTBINS)
 	for test in $(TESTBINS); do echo $$test; ./$$test ; done
+
+# keep object files
+.SECONDARY: $(OBJS) $(TESTOBJS)
 
 # lib c sources
 $(BUILD_DIR)/lib/%.c.o: %.c

@@ -40,9 +40,10 @@ C_SOURCES += $(wildcard $(LIB_DIR)/utility/trezor/*.c) \
 			$(wildcard $(LIB_DIR)/utility/*.c) \
 			$(wildcard $(LIB_DIR)/*.c)
 
-# include lib path, don't use mbed or arduino config (-DUSE_STDONLY)
-CFLAGS = -I$(LIB_DIR)
-CPPFLAGS = -I$(LIB_DIR) -DUSE_STDONLY
+# include lib path, don't use mbed or arduino config (-DUSE_STDONLY), debug symbols, all warnings as errors
+FLAGS = -I$(LIB_DIR) -g -Wall -Werror -ldl
+CFLAGS = $(FLAGS)
+CPPFLAGS = $(FLAGS) -DUSE_STDONLY
 
 OBJS = $(patsubst $(SRC_DIR)/%, $(BUILD_DIR)/src/%.o, \
 		$(patsubst $(LIB_DIR)/%, $(BUILD_DIR)/lib/%.o, \

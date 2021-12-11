@@ -23,7 +23,8 @@ CXX := $(TOOLCHAIN_PREFIX)g++
 CXX_SOURCES += $(wildcard $(LIB_DIR)/*.cpp)
 C_SOURCES += $(wildcard $(LIB_DIR)/utility/trezor/*.c) \
 			$(wildcard $(LIB_DIR)/utility/*.c) \
-			$(wildcard $(LIB_DIR)/*.c)
+			$(wildcard $(LIB_DIR)/*.c) \
+			$(wildcard $(SRC_DIR)/*.c)
 
 # include lib path, don't use mbed or arduino config (-DUSE_STDONLY)
 CFLAGS = -I$(LIB_DIR) -g
@@ -35,6 +36,7 @@ OBJS = $(patsubst $(SRC_DIR)/%, $(BUILD_DIR)/src/%.o, \
 
 vpath %.cpp $(SRC_DIR)
 vpath %.cpp $(LIB_DIR)
+vpath %.c $(SRC_DIR)
 vpath %.c $(LIB_DIR)
 
 TESTS=$(wildcard $(SRC_DIR)/*.cpp)
@@ -61,6 +63,11 @@ $(BUILD_DIR)/lib/%.c.o: %.c
 $(BUILD_DIR)/lib/%.cpp.o: %.cpp
 	$(MKDIR_P) $(dir $@)
 	$(CXX) -c $(CPPFLAGS) $< -o $@
+
+# lib c sources
+$(BUILD_DIR)/src/%.c.o: %.c
+	$(MKDIR_P) $(dir $@)
+	$(CC) -c $(CFLAGS) $< -o $@
 
 # test cpp sources
 $(BUILD_DIR)/test/%.cpp.o: %.cpp

@@ -2,6 +2,19 @@
 #include "Bitcoin.h"
 #include "PSBT.h"
 
+#include <stdint.h>
+#include <stdlib.h>
+
+// You can define your random function to improve side-channel resistance
+extern "C" {
+
+    // use system random function
+    uint32_t random32(void){
+        return (uint32_t)rand();
+    }
+
+}
+
 using namespace std;
 
 char mnemonic[] = "flight canvas heart purse potato mixed offer tooth maple blue kitten salute almost staff physical remain coral clump midnight rotate innocent shield inch ski";
@@ -35,7 +48,7 @@ int main() {
     cout << "Transactions details:" << endl;
     // going through all outputs
     cout << "Outputs:" << endl;
-    for(int i = 0; i < psbt.tx.outputsNumber; i++){
+    for(unsigned int i = 0; i < psbt.tx.outputsNumber; i++){
         // print addresses
         cout << psbt.tx.txOuts[i].address(&Testnet);
         if(psbt.txOutsMeta[i].derivationsLen > 0){ // there is derivation path

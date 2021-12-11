@@ -347,7 +347,7 @@ size_t toBase58Check(const uint8_t * array, size_t arraySize, char * output, siz
 #if USE_ARDUINO_STRING || USE_STD_STRING
 String toBase58Check(const uint8_t * array, size_t arraySize){
     if(array == NULL){ return String(); }
-    size_t len = toBase58Length(array, arraySize) + 5; // +4 checksum +1 for null terminator
+    size_t len = toBase58Length(array, arraySize + 4) + 1; // +4 checksum +1 for null terminator
     char * buf = (char *)malloc(len);
     if(buf == NULL){ return String(); }
     toBase58Check(array, arraySize, buf, len);

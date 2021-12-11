@@ -10,6 +10,7 @@
 
 // TODO: get rid of these blahLength functions, they are redundant
 //       just stop when array is full and return errorcode
+
 size_t toBase58Length(const uint8_t * array, size_t arraySize);
 size_t toBase58(const uint8_t * array, size_t arraySize, char * output, size_t outputSize);
 #if USE_ARDUINO_STRING

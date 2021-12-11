@@ -49,6 +49,19 @@ HDPrivateKey::HDPrivateKey(const uint8_t secret[32],
         memzero(parentFingerprint, 4);
     }
 }
+HDPrivateKey &HDPrivateKey::operator=(const HDPrivateKey &other){
+    if (this == &other){ return *this; } // self-assignment
+    init();
+    type = other.type;
+    uint8_t secret[32];
+    other.getSecret(secret);
+    setSecret(secret);
+    memcpy(chainCode, other.chainCode, 32);
+    depth = other.depth;
+    childNumber = other.childNumber;
+    memcpy(parentFingerprint, other.parentFingerprint, 4);
+    return *this;
+};
 HDPrivateKey::HDPrivateKey(const char * xprvArr){
     init();
     from_str(xprvArr, strlen(xprvArr));
@@ -465,7 +478,7 @@ HDPrivateKey HDPrivateKey::derive(const char * path) const{
     if(cur[len-1] == '/'){ // remove trailing "/"
         len--;
     }
-    HDPrivateKey pk;
+    HDPrivateKey pk; // invalid private key to return if something failed
     size_t derivationLen = 1;
     // checking if all chars are valid and counting derivation length
     for(size_t i=0; i<len; i++){
@@ -478,6 +491,7 @@ HDPrivateKey HDPrivateKey::derive(const char * path) const{
         }
     }
     uint32_t * derivation = (uint32_t *)calloc(derivationLen, sizeof(uint32_t));
+    if(derivation == NULL){ return pk; }
     size_t current = 0;
     for(size_t i=0; i<len; i++){
         if(cur[i] == '/'){ // next
@@ -496,7 +510,9 @@ HDPrivateKey HDPrivateKey::derive(const char * path) const{
             derivation[current] += HARDENED_INDEX;
         }
     }
-    return derive(derivation, derivationLen);
+    pk = derive(derivation, derivationLen);
+    free(derivation);
+    return pk;
 }
 // ---------------------------------------------------------------- HDPublicKey class
 
@@ -644,6 +660,7 @@ size_t HDPublicKey::from_str(const char * xpubArr, size_t xpubLen){
 }
 
 HDPublicKey::HDPublicKey():PublicKey(){
+    memzero(prefix, 4);
     compressed = true;
     memzero(chainCode, 32);
     depth = 0;
@@ -658,8 +675,7 @@ HDPublicKey::HDPublicKey(const uint8_t p[64],
                            const uint8_t parent_fingerprint_arr[4],
                            uint32_t child_number,
                            const Network * net,
-                           ScriptType key_type){
-    reset();
+                           ScriptType key_type):HDPublicKey(){
     memcpy(point, p, 64);
     compressed = true;
     type = key_type;
@@ -673,8 +689,18 @@ HDPublicKey::HDPublicKey(const uint8_t p[64],
         memzero(parentFingerprint, 4);
     }
 }
-HDPublicKey::HDPublicKey(const char * xpubArr){
-    reset();
+HDPublicKey &HDPublicKey::operator=(const HDPublicKey &other){
+    if (this == &other){ return *this; } // self-assignment
+    type = other.type;
+    memcpy(point, other.point, 64);
+    memcpy(chainCode, other.chainCode, 32);
+    compressed = true;
+    depth = other.depth;
+    childNumber = other.childNumber;
+    memcpy(parentFingerprint, other.parentFingerprint, 4);
+    return *this;
+};
+HDPublicKey::HDPublicKey(const char * xpubArr):HDPublicKey(){
     network = &DEFAULT_NETWORK;
     from_str(xpubArr, strlen(xpubArr));
 }
@@ -785,7 +811,7 @@ HDPublicKey HDPublicKey::derive(const char * path) const{
     if(cur[len-1] == '/'){ // remove trailing "/"
         len--;
     }
-    HDPublicKey pk;
+    HDPublicKey pk; // dummy to return if something failed
     size_t derivationLen = 1;
     // checking if all chars are valid and counting derivation length
     for(size_t i=0; i<len; i++){
@@ -798,6 +824,7 @@ HDPublicKey HDPublicKey::derive(const char * path) const{
         }
     }
     uint32_t * derivation = (uint32_t *)calloc(derivationLen, sizeof(uint32_t));
+    if(derivation == NULL){ return pk; }
     size_t current = 0;
     for(size_t i=0; i<len; i++){
         if(cur[i] == '/'){ // next
@@ -812,6 +839,8 @@ HDPublicKey HDPublicKey::derive(const char * path) const{
         uint32_t val = pch-VALID_CHARS;
         derivation[current] = derivation[current]*10 + val;
     }
-    return derive(derivation, derivationLen);
+    pk = derive(derivation, derivationLen);
+    free(derivation);
+    return pk;
 }
 

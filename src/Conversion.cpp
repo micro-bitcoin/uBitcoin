@@ -79,16 +79,16 @@ size_t toHex(const uint8_t * array, size_t arraySize, Print &s){
 #endif
 
 uint8_t hexToVal(char c){
-  if(c >= '0' && c <= '9'){
-    return ((uint8_t)(c - '0')) & 0x0F;
-  }
-  if(c >= 'A' && c <= 'F'){
-    return ((uint8_t)(c-'A'+10)) & 0x0F;
-  }
-  if(c >= 'a' && c <= 'f'){
-    return ((uint8_t)(c-'a'+10)) & 0x0F;
-  }
-  return 0xFF;
+    if(c >= '0' && c <= '9'){
+        return ((uint8_t)(c - '0')) & 0x0F;
+    }
+    if(c >= 'A' && c <= 'F'){
+        return ((uint8_t)(c-'A'+10)) & 0x0F;
+    }
+    if(c >= 'a' && c <= 'f'){
+        return ((uint8_t)(c-'a'+10)) & 0x0F;
+    }
+    return 0xFF;
 }
 
 size_t fromHex(const char * hex, size_t hexLen, uint8_t * array, size_t arraySize){
@@ -131,33 +131,33 @@ size_t fromHex(const char * hex, uint8_t * array, size_t arraySize){
 /******************** Binary conversion *******************/
 
 size_t fromBin(const char * bin, size_t binLen, uint8_t * array, size_t arraySize){
-  if(bin == NULL || array == NULL){ return 0; }
-  // array is big enough
-  if(arraySize*8 < binLen){
-    return 0;
-  }
-  size_t len = binLen/8;
-  if(binLen % 8 != 0){
-    len += 1; // not aligned to 8 bits
-  }
-  // zero output array
-  memzero(array, arraySize);
-  for(size_t i = 0; i < binLen; i++){
-    // we go in reverse order (from the end of the string)
-    uint8_t exp = (i%8); // shift
-    uint8_t n = (i/8);   // current byte from the end
-    char c = bin[binLen-i-1];
-    if(c == '1'){
-      // set bit
-      array[len-n-1] |= (1<<exp);
-    }else if(c == '0'){
-      // correct char, nothing to do here
-    }else{
-      // wrong char
-      return 0;
+    if(bin == NULL || array == NULL){ return 0; }
+    // array is big enough
+    if(arraySize*8 < binLen){
+        return 0;
     }
-  }
-  return len;
+    size_t len = binLen/8;
+    if(binLen % 8 != 0){
+        len += 1; // not aligned to 8 bits
+    }
+    // zero output array
+    memzero(array, arraySize);
+    for(size_t i = 0; i < binLen; i++){
+        // we go in reverse order (from the end of the string)
+        uint8_t exp = (i%8); // shift
+        uint8_t n = (i/8); // current byte from the end
+        char c = bin[binLen-i-1];
+        if(c == '1'){
+            // set bit
+            array[len-n-1] |= (1<<exp);
+        }else if(c == '0'){
+            // correct char, nothing to do here
+        }else{
+            // wrong char
+            return 0;
+        }
+    }
+    return len;
 }
 
 size_t toBin(const uint8_t * array, size_t arraySize, char * output, size_t outputSize){
@@ -545,14 +545,14 @@ size_t toBase43(const uint8_t * array, size_t arraySize, char * output, size_t o
 }
 #if (USE_STD_STRING || USE_ARDUINO_STRING)
 String toBase43(const uint8_t * array, size_t arraySize){
-  if(array == NULL){ return String(); }
-  size_t l = toBase43Length(array, arraySize);
-  char * output = (char *)calloc(l+1, sizeof(char));
-  if(output == NULL){ return String(); }
-  toBase43(array, arraySize, output, l);
-  String s(output);
-  free(output);
-  return s;
+    if(array == NULL){ return String(); }
+    size_t l = toBase43Length(array, arraySize);
+    char * output = (char *)calloc(l+1, sizeof(char));
+    if(output == NULL){ return String(); }
+    toBase43(array, arraySize, output, l);
+    String s(output);
+    free(output);
+    return s;
 }
 #endif
 // TODO: add zero count, fix wrong length

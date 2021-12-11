@@ -90,6 +90,10 @@ const Network Signet = {
 };
 
 const Network * networks[4] = { &Mainnet, &Testnet, &Regtest, &Signet };
+const uint8_t networks_len = 4;
+
+// error code when parsing fails
+int ubtc_errno = 0;
 
 const char * generateMnemonic(uint8_t numWords){
     if(numWords<12 || numWords > 24 || numWords % 3 != 0){
@@ -168,25 +172,22 @@ bool checkMnemonic(const String mnemonic){
 // ---------------------------------------------------------------- Signature class
 
 Signature::Signature(){
-    reset();
+    memzero(tot, 3);
+    index = 0;
     memzero(r, 32);
     memzero(s, 32);
 }
-Signature::Signature(const uint8_t r_arr[32], const uint8_t s_arr[32]){
-    reset();
+Signature::Signature(const uint8_t r_arr[32], const uint8_t s_arr[32]):Signature(){
     memcpy(r, r_arr, 32);
     memcpy(s, s_arr, 32);
 }
-Signature::Signature(const uint8_t * der){
-    reset();
+Signature::Signature(const uint8_t * der):Signature(){
     fromDer(der, der[1]+2);
 }
-Signature::Signature(const uint8_t * der, size_t derLen){
-    reset();
+Signature::Signature(const uint8_t * der, size_t derLen):Signature(){
     fromDer(der, derLen);
 }
-Signature::Signature(const char * der){
-    reset();
+Signature::Signature(const char * der):Signature(){
     ParseByteStream s(der);
     Signature::from_stream(&s);
 }
@@ -205,6 +206,7 @@ size_t Signature::from_stream(ParseStream *stream){
     }
     if(status == PARSING_DONE){
         bytes_parsed = 0;
+        memzero(tot, 3);
         memzero(r, 32);
         memzero(s, 32);
     }
@@ -240,33 +242,33 @@ size_t Signature::from_stream(ParseStream *stream){
         bytes_read++;
         if(c != 0){ status = PARSING_FAILED; return bytes_read; }
     }
-    while(stream->available() && bytes_parsed+bytes_read < 4+tot[1]){
+    while(stream->available() && bytes_parsed+bytes_read < (size_t)4+tot[1]){
         r[bytes_parsed+bytes_read-4+32-tot[1]] = stream->read();
         bytes_read++;
     }
     if(rlen() != tot[1]){ status = PARSING_FAILED; return bytes_read; }
     // s
-    if(stream->available() && bytes_parsed+bytes_read < 4+tot[1]+1){
+    if(stream->available() && bytes_parsed+bytes_read < (size_t)4+tot[1]+1){
         c = stream->read();
         bytes_read++;
         if(c != 0x02){ status = PARSING_FAILED; return bytes_read; }
     }
-    if(stream->available() && bytes_parsed+bytes_read < 4+tot[1]+2){
+    if(stream->available() && bytes_parsed+bytes_read < (size_t)4+tot[1]+2){
         tot[2] = stream->read();
         bytes_read++;
         if(tot[2] > 33){ status = PARSING_FAILED; return bytes_read; }
     }
-    if(stream->available() && tot[2]==33 && bytes_parsed+bytes_read < 4+tot[1]+3){
+    if(stream->available() && tot[2]==33 && bytes_parsed+bytes_read < (size_t)4+tot[1]+3){
         c = stream->read();
         bytes_read++;
         if(c != 0){ status = PARSING_FAILED; return bytes_read; }
     }
-    while(stream->available() && bytes_parsed+bytes_read < 4+tot[1]+2+tot[2]){
+    while(stream->available() && bytes_parsed+bytes_read < (size_t)4+tot[1]+2+tot[2]){
         s[bytes_parsed+bytes_read-4-tot[1]-2-tot[2]+32] = stream->read();
         bytes_read++;
     }
     if(slen() != tot[2]){ status = PARSING_FAILED; return bytes_read; }
-    if(bytes_parsed+bytes_read == 4+tot[1]+2+tot[2]){
+    if(bytes_parsed+bytes_read == (size_t)4+tot[1]+2+tot[2]){
         status = PARSING_DONE;
     }
     bytes_parsed+=bytes_read;
@@ -423,7 +425,7 @@ String PublicKey::segwitAddress(const Network * network) const{
 int PublicKey::nestedSegwitAddress(char address[], size_t len, const Network * network) const{
     memzero(address, len);
     uint8_t script[22] = { 0 };
-    script[0] = 0x00;
+    // script[0] = 0x00; // no need to set - already zero
     script[1] = 0x14;
     uint8_t sec_arr[65] = { 0 };
     int l = sec(sec_arr, sizeof(sec_arr));
@@ -495,6 +497,15 @@ PrivateKey::PrivateKey(const uint8_t * secret_arr, bool use_compressed, const Ne
     pubKey = *this * GeneratorPoint;
     pubKey.compressed = use_compressed;
 }
+PrivateKey &PrivateKey::operator=(const PrivateKey &other){
+    if (this == &other){ return *this; } // self-assignment
+    reset();
+    other.getSecret(num);
+    network = other.network;
+    pubKey = *this * GeneratorPoint;
+    pubKey.compressed = other.pubKey.compressed;
+    return *this;
+};
 PrivateKey::~PrivateKey(void) {
     reset();
     // erase secret key from memory

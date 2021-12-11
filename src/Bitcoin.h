@@ -72,8 +72,10 @@ extern const Network Testnet;
 extern const Network Regtest;
 extern const Network Signet;
 
-extern const Network * networks[4];
-const uint8_t networks_len = 4;
+extern const Network * networks[];
+extern const uint8_t networks_len;
+
+extern int ubtc_errno;
 
 // number of rounds for mnemonic to seed conversion
 #define PBKDF2_ROUNDS 2048
@@ -153,17 +155,17 @@ public:
     PublicKey(const uint8_t * secArr) : ECPoint(secArr){};
     explicit PublicKey(const char * secHex) : ECPoint(secHex){};
     // do I need this?
-    PublicKey(ECPoint p){ reset(); compressed=p.compressed; memcpy(point, p.point, 64); };
+    PublicKey(ECPoint p):PublicKey(p.point, p.compressed){};
     /**
-     *  \brief Populated `addr` with legacy Pay-To-Pubkey-Hash address (P2PKH, `1...` for mainnet)
+     *  \brief Fills `addr` with legacy Pay-To-Pubkey-Hash address (P2PKH, `1...` for mainnet)
      */
     int legacyAddress(char * addr, size_t len, const Network * network = &DEFAULT_NETWORK) const;
     /**
-     *  \brief Populated `addr` with native segwit address (P2WPKH, `bc1...` for mainnet)
+     *  \brief Fills `addr` with native segwit address (P2WPKH, `bc1...` for mainnet)
      */
     int segwitAddress(char * addr, size_t len, const Network * network = &DEFAULT_NETWORK) const;
     /**
-     *  \brief Populated `addr` with nested segwit address (P2SH-P2WPKH, `3...` for mainnet)
+     *  \brief Fills `addr` with nested segwit address (P2SH-P2WPKH, `3...` for mainnet)
      */
     int nestedSegwitAddress(char * addr, size_t len, const Network * network = &DEFAULT_NETWORK) const;
     /**
@@ -259,6 +261,7 @@ public:
     std::string segwitAddress() const;
     std::string nestedSegwitAddress() const;
 #endif
+    PrivateKey &operator=(const PrivateKey &other);                   // assignment
 };
 
 /**
@@ -294,6 +297,9 @@ public:
 #if USE_ARDUINO_STRING
     HDPrivateKey(String mnemonic, String password, const Network * network = &DEFAULT_NETWORK, void (*progress_callback)(float) = NULL);
 #endif
+    HDPrivateKey(const HDPrivateKey &other):HDPrivateKey(  // copy
+        other.num, other.chainCode, other.depth,
+        other.parentFingerprint, other.childNumber, other.network, other.type){};
     ~HDPrivateKey();
     virtual size_t length() const{ return 78; };
     /** \brief Length of the key in base58 encoding (111). */
@@ -350,6 +356,7 @@ public:
 #endif
     // just to make sure it is compressed
     PublicKey publicKey() const{ PublicKey p = pubKey; p.compressed = true; return p; };
+    HDPrivateKey &operator=(const HDPrivateKey &other);                   // assignment
 };
 
 /**
@@ -376,6 +383,9 @@ public:
                  const Network * net = &DEFAULT_NETWORK,
                  ScriptType key_type = UNKNOWN_TYPE);
     HDPublicKey(const char * xpubArr);
+    HDPublicKey(const HDPublicKey &other):HDPublicKey(  // copy
+        other.point, other.chainCode, other.depth,
+        other.parentFingerprint, other.childNumber, other.network, other.type){};
 #if USE_ARDUINO_STRING
     HDPublicKey(String pub){ from_str(pub.c_str(), pub.length()); };
 #endif
@@ -423,6 +433,7 @@ public:
 #if USE_ARDUINO_STRING
     HDPublicKey derive(String path) const{ return derive(path.c_str()); };
 #endif
+    HDPublicKey &operator=(const HDPublicKey &other);                   // assignment
 };
 
 /**
@@ -495,7 +506,7 @@ public:
     /** \brief creates one of standart scripts (P2SH, P2WSH) */
     Script(const Script &other, ScriptType type);
     Script(const Script &other); // copy
-    ~Script(){ reset(); clear(); };
+    ~Script(){ if(scriptArray){ free(scriptArray); } };
 
     /** \brief tries to determine the script type */
     ScriptType type() const;
@@ -557,6 +568,7 @@ public:
     Witness(const uint8_t * buffer, size_t len);
     Witness(const Signature sig, const PublicKey pub);
     Witness(const Witness &other); // copy
+    ~Witness(){ if(witnessArray){ free(witnessArray); } };
     /** \brief returns number of elements in the witness */
     uint8_t count() const{ return numElements; };
     /** \brief adds `<len><data>` to the witness */
@@ -613,11 +625,11 @@ protected:
     virtual size_t to_stream(SerializeStream *s, size_t offset = 0) const;
     void init(){ status = PARSING_DONE; bytes_parsed=0; amount = 0; };
 public:
-    TxOut(){ init(); };
-    TxOut(uint64_t send_amount, const Script outputScript){ init(); amount = send_amount; scriptPubkey = outputScript; };
-    TxOut(const Script outputScript, uint64_t send_amount){ init(); amount = send_amount; scriptPubkey = outputScript; };
-    TxOut(uint64_t send_amount, const char * address){ init(); amount = send_amount; scriptPubkey = Script(address); }; 
-    TxOut(const char * address, uint64_t send_amount){  init(); amount = send_amount; scriptPubkey = Script(address); };
+    TxOut(){ amount = 0; };
+    TxOut(uint64_t send_amount, const Script outputScript){ amount = send_amount; scriptPubkey = outputScript; };
+    TxOut(const Script outputScript, uint64_t send_amount){ amount = send_amount; scriptPubkey = outputScript; };
+    TxOut(uint64_t send_amount, const char * address){ amount = send_amount; scriptPubkey = Script(address); }; 
+    TxOut(const char * address, uint64_t send_amount){ amount = send_amount; scriptPubkey = Script(address); };
     virtual size_t length() const{ return 8+scriptPubkey.length(); };
 
     /** \brief this script defines the rules for the spending input */

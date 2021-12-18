@@ -649,7 +649,7 @@ size_t toBase64(const uint8_t * array, size_t arraySize, char * output, size_t o
     if(outputSize < toBase64Length(array, arraySize)){
         return 0;
     }
-    while(3 * cur < arraySize - 3){
+    while(3 * cur + 3 < arraySize){
         uint32_t val = bigEndianToInt(array+3*cur, 3);
         for(uint8_t i=0; i<4; i++){
             output[4*cur + i] = BASE64_CHARS[((val >> (6*(3-i))) & 0x3F)];
@@ -658,7 +658,7 @@ size_t toBase64(const uint8_t * array, size_t arraySize, char * output, size_t o
     }
     if(arraySize % 3 != 0){
         uint8_t rem = arraySize % 3;
-        uint32_t val = bigEndianToInt(array+3*cur, 3-rem);
+        uint32_t val = bigEndianToInt(array+3*cur, rem);
         val = val << ((3-rem) * 8);
         for(uint8_t i=0; i<4; i++){
             output[4*cur + i] = BASE64_CHARS[((val >> (6*(3-i))) & 0x3F)];

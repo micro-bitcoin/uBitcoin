@@ -40,6 +40,25 @@ MU_TEST(test_base64) {
   sz = fromBase64(b64, out, sizeof(out));
   mu_assert(sz == strlen(message), "fromBase64 size is wrong");
   mu_assert(memcmp(out, bytes, sz) == 0, "fromBase64 decoding is wrong");
+
+  char *msgs[] = {
+    "Man", "Ma", "M", "light w", "light wo", "light wor", "light work", "light work.", NULL
+  };
+  char *b64msgs[] = {
+    "TWFu", "TWE=", "TQ==", "bGlnaHQgdw==", "bGlnaHQgd28=", "bGlnaHQgd29y", "bGlnaHQgd29yaw==", "bGlnaHQgd29yay4=", NULL
+  };
+  size_t i = 0;
+  while(msgs[i] != NULL){
+    char *msg = msgs[i];
+    s = toBase64((uint8_t*)msg, strlen(msg));
+    mu_assert(strcmp(s.c_str(), b64msgs[i]) == 0, "toBase64 conversion is invalid");
+
+    sz = fromBase64(b64msgs[i], out, sizeof(out));
+    mu_assert(sz == strlen(msg), "fromBase64 size is wrong");
+    mu_assert(memcmp(out, msg, sz) == 0, "fromBase64 decoding is wrong");
+
+    i++;
+  }
 }
 
 MU_TEST(test_nullptr) {

@@ -497,7 +497,7 @@ PrivateKey::PrivateKey(const uint8_t * secret_arr, bool use_compressed, const Ne
     pubKey = *this * GeneratorPoint;
     pubKey.compressed = use_compressed;
 }
-PrivateKey &PrivateKey::operator=(const PrivateKey &other){
+/*PrivateKey &PrivateKey::operator=(const PrivateKey &other){
     if (this == &other){ return *this; } // self-assignment
     reset();
     other.getSecret(num);
@@ -505,7 +505,7 @@ PrivateKey &PrivateKey::operator=(const PrivateKey &other){
     pubKey = *this * GeneratorPoint;
     pubKey.compressed = other.pubKey.compressed;
     return *this;
-};
+};*/
 PrivateKey::~PrivateKey(void) {
     reset();
     // erase secret key from memory

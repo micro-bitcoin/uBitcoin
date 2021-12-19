@@ -261,7 +261,7 @@ public:
     std::string segwitAddress() const;
     std::string nestedSegwitAddress() const;
 #endif
-    PrivateKey &operator=(const PrivateKey &other);                   // assignment
+//    PrivateKey &operator=(const PrivateKey &other);                   // assignment
 };
 
 /**
@@ -297,9 +297,10 @@ public:
 #if USE_ARDUINO_STRING
     HDPrivateKey(String mnemonic, String password, const Network * network = &DEFAULT_NETWORK, void (*progress_callback)(float) = NULL);
 #endif
-    HDPrivateKey(const HDPrivateKey &other):HDPrivateKey(  // copy
+/*    HDPrivateKey(const HDPrivateKey &other):HDPrivateKey(  // copy
         other.num, other.chainCode, other.depth,
         other.parentFingerprint, other.childNumber, other.network, other.type){};
+*/
     ~HDPrivateKey();
     virtual size_t length() const{ return 78; };
     /** \brief Length of the key in base58 encoding (111). */
@@ -356,7 +357,7 @@ public:
 #endif
     // just to make sure it is compressed
     PublicKey publicKey() const{ PublicKey p = pubKey; p.compressed = true; return p; };
-    HDPrivateKey &operator=(const HDPrivateKey &other);                   // assignment
+//    HDPrivateKey &operator=(const HDPrivateKey &other);                   // assignment
 };
 
 /**
@@ -383,9 +384,10 @@ public:
                  const Network * net = &DEFAULT_NETWORK,
                  ScriptType key_type = UNKNOWN_TYPE);
     HDPublicKey(const char * xpubArr);
-    HDPublicKey(const HDPublicKey &other):HDPublicKey(  // copy
+/*    HDPublicKey(const HDPublicKey &other):HDPublicKey(  // copy
         other.point, other.chainCode, other.depth,
         other.parentFingerprint, other.childNumber, other.network, other.type){};
+*/
 #if USE_ARDUINO_STRING
     HDPublicKey(String pub){ from_str(pub.c_str(), pub.length()); };
 #endif
@@ -433,7 +435,7 @@ public:
 #if USE_ARDUINO_STRING
     HDPublicKey derive(String path) const{ return derive(path.c_str()); };
 #endif
-    HDPublicKey &operator=(const HDPublicKey &other);                   // assignment
+//    HDPublicKey &operator=(const HDPublicKey &other);                   // assignment
 };
 
 /**

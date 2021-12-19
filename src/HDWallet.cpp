@@ -49,6 +49,7 @@ HDPrivateKey::HDPrivateKey(const uint8_t secret[32],
         memzero(parentFingerprint, 4);
     }
 }
+/*
 HDPrivateKey &HDPrivateKey::operator=(const HDPrivateKey &other){
     if (this == &other){ return *this; } // self-assignment
     init();
@@ -61,7 +62,7 @@ HDPrivateKey &HDPrivateKey::operator=(const HDPrivateKey &other){
     childNumber = other.childNumber;
     memcpy(parentFingerprint, other.parentFingerprint, 4);
     return *this;
-};
+};*/
 HDPrivateKey::HDPrivateKey(const char * xprvArr){
     init();
     from_str(xprvArr, strlen(xprvArr));
@@ -689,6 +690,7 @@ HDPublicKey::HDPublicKey(const uint8_t p[64],
         memzero(parentFingerprint, 4);
     }
 }
+/*
 HDPublicKey &HDPublicKey::operator=(const HDPublicKey &other){
     if (this == &other){ return *this; } // self-assignment
     type = other.type;
@@ -699,7 +701,7 @@ HDPublicKey &HDPublicKey::operator=(const HDPublicKey &other){
     childNumber = other.childNumber;
     memcpy(parentFingerprint, other.parentFingerprint, 4);
     return *this;
-};
+};*/
 HDPublicKey::HDPublicKey(const char * xpubArr):HDPublicKey(){
     network = &DEFAULT_NETWORK;
     from_str(xpubArr, strlen(xpubArr));

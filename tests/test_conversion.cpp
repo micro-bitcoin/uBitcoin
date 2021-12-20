@@ -42,10 +42,16 @@ MU_TEST(test_base64) {
   mu_assert(memcmp(out, bytes, sz) == 0, "fromBase64 decoding is wrong");
 
   char *msgs[] = {
-    "Man", "Ma", "M", "light w", "light wo", "light wor", "light work", "light work.", NULL
+    "Man", "Ma", "M", "light w", "light wo", "light wor", "light work", "light work.",
+    "\x6c\x68\x40\xa2\xc4\xbe\xfe\xa7\x85\x30\x20", NULL
   };
   char *b64msgs[] = {
-    "TWFu", "TWE=", "TQ==", "bGlnaHQgdw==", "bGlnaHQgd28=", "bGlnaHQgd29y", "bGlnaHQgd29yaw==", "bGlnaHQgd29yay4=", NULL
+    "TWFu", "TWE=", "TQ==", "bGlnaHQgdw==", "bGlnaHQgd28=", "bGlnaHQgd29y", "bGlnaHQgd29yaw==", "bGlnaHQgd29yay4=",
+    "bGhAosS+/qeFMCA=", NULL
+  };
+  char *b64msgs_url[] = {
+    "TWFu", "TWE", "TQ", "bGlnaHQgdw", "bGlnaHQgd28", "bGlnaHQgd29y", "bGlnaHQgd29yaw", "bGlnaHQgd29yay4",
+    "bGhAosS-_qeFMCA", NULL
   };
   size_t i = 0;
   while(msgs[i] != NULL){
@@ -56,6 +62,14 @@ MU_TEST(test_base64) {
     sz = fromBase64(b64msgs[i], out, sizeof(out));
     mu_assert(sz == strlen(msg), "fromBase64 size is wrong");
     mu_assert(memcmp(out, msg, sz) == 0, "fromBase64 decoding is wrong");
+
+    s = toBase64((uint8_t*)msg, strlen(msg), BASE64_NOPADDING | BASE64_URLSAFE);
+    size_t l = toBase64Length((uint8_t*)msg, strlen(msg), BASE64_NOPADDING | BASE64_URLSAFE);
+    mu_assert(strcmp(s.c_str(), b64msgs_url[i]) == 0, "toBase64 urlsafe conversion is invalid");
+
+    sz = fromBase64(b64msgs_url[i], out, sizeof(out), BASE64_NOPADDING | BASE64_URLSAFE);
+    mu_assert(sz == strlen(msg), "fromBase64 size is wrong");
+    mu_assert(memcmp(out, msg, sz) == 0, "fromBase64 urlsafe decoding is wrong");
 
     i++;
   }

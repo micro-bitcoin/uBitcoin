@@ -494,14 +494,14 @@ public:
     Script();
     Script(const uint8_t * buffer, size_t len);
     /** \brief creates a script from address */
-    Script(const char * address){ fromAddress(address); };
+    Script(const char * address):Script(){ fromAddress(address); };
 #if USE_ARDUINO_STRING
     /** \brief creates a script from address */
-    Script(const String address){ fromAddress(address.c_str()); };
+    Script(const String address):Script(){ fromAddress(address.c_str()); };
 #endif
 #if USE_STD_STRING
     /** \brief creates a script from address */
-    Script(const std::string address){ fromAddress(address.c_str()); };
+    Script(const std::string address):Script(){ fromAddress(address.c_str()); };
 #endif
     /** \brief creates one of standart scripts (P2PKH, P2WPKH) */
     Script(const PublicKey pubkey, ScriptType type = P2PKH);

@@ -17,7 +17,7 @@ public:
     virtual size_t length() const{ return 33 + 32*(1-compressed); };
     virtual size_t stringLength() const{ return 2*ECPoint::length(); };
 
-    ECPoint(){ memset(point, 0, 64); compressed = true; };
+    ECPoint(){ reset(); };
     ECPoint(const uint8_t pubkeyArr[64], bool use_compressed);
     ECPoint(const uint8_t * secArr);
     explicit ECPoint(const char * secHex);
@@ -69,14 +69,15 @@ protected:
     virtual size_t from_stream(ParseStream *s);
     virtual size_t to_stream(SerializeStream *s, size_t offset = 0) const;
     uint8_t num[32];  // scalar mod secp526k1.order
+    virtual void init(){ bytes_parsed = 0; status=PARSING_DONE; memzero(num, 32); };
 public:
     virtual void reset(){ bytes_parsed = 0; status=PARSING_DONE; memzero(num, 32); };
     virtual size_t length() const{ return 32; };
 
-    ECScalar(){ memzero(num, 32); };
-    ECScalar(const uint8_t * arr, size_t len):ECScalar(){ parse(arr, len); };
-    explicit ECScalar(const char * arr):ECScalar(){ parse(arr, strlen(arr)); };
-    ECScalar(uint32_t i):ECScalar(){ intToBigEndian(i, num, 32); };
+    ECScalar(){ init(); };
+    ECScalar(const uint8_t * arr, size_t len){ init(); parse(arr, len); };
+    explicit ECScalar(const char * arr){ init(); parse(arr, strlen(arr)); };
+    ECScalar(uint32_t i){ init(); intToBigEndian(i, num, 32); };
     ~ECScalar(){ memzero(num, 32); };
 
     /** \brief Populates array with the secret key */

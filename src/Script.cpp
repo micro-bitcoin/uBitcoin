@@ -19,11 +19,10 @@ void Script::init(){
     lenLen = 0;
 }
 Script::Script(void){
-    scriptLen = 0;
-    scriptArray = NULL;
-    lenLen = 0;
+    init();
 }
-Script::Script(const uint8_t * buffer, size_t len):Script(){
+Script::Script(const uint8_t * buffer, size_t len){
+    init();
     push(buffer, len);
 }
 void Script::fromAddress(const char * address){
@@ -96,7 +95,8 @@ void Script::fromAddress(const char * address){
         }
     }
 }
-Script::Script(const PublicKey pubkey, ScriptType type):Script(){
+Script::Script(const PublicKey pubkey, ScriptType type){
+    init();
     if(type == P2PKH){
         scriptLen = 25;
         scriptArray = (uint8_t *) calloc( scriptLen, sizeof(uint8_t));
@@ -121,7 +121,8 @@ Script::Script(const PublicKey pubkey, ScriptType type):Script(){
         hash160(sec_arr, l, scriptArray+2);
     }
 }
-Script::Script(const Script &other, ScriptType type):Script(){
+Script::Script(const Script &other, ScriptType type){
+    init();
     if(type == P2SH){
         scriptLen = 23;
         scriptArray = (uint8_t *) calloc(scriptLen, sizeof(uint8_t));

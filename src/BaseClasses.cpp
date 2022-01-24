@@ -1,5 +1,6 @@
 #include "uBitcoin_conf.h"
 #include "BaseClasses.h"
+#include <cstdlib>
 
 #if USE_STD_STRING
 using std::string;

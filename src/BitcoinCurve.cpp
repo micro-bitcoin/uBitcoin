@@ -99,7 +99,8 @@ ECPoint::ECPoint(const uint8_t * secArr){
 		ECPoint::fromSec(secArr, 33);
 	}
 };
-ECPoint::ECPoint(const char * arr):ECPoint(){
+ECPoint::ECPoint(const char * arr){
+	reset();
 	ECPoint::parse(arr, strlen(arr));
 };
 

@@ -150,12 +150,12 @@ size_t mnemonicToEntropy(char * mnemonic, uint8_t * output, size_t outputLen);
  */
 class PublicKey : public ECPoint{
 public:
-    PublicKey():ECPoint(){};
-    PublicKey(const uint8_t pubkeyArr[64], bool use_compressed) : ECPoint(pubkeyArr, use_compressed){};
-    PublicKey(const uint8_t * secArr) : ECPoint(secArr){};
-    explicit PublicKey(const char * secHex) : ECPoint(secHex){};
+    PublicKey(){ reset(); };
+    PublicKey(const uint8_t pubkeyArr[64], bool use_compressed){ reset(); memcpy(point, pubkeyArr, 64); compressed=use_compressed; };
+    PublicKey(const uint8_t * secArr){ reset(); parse(secArr, 33 + ((uint8_t)(secArr[0]==0x04))*32); };
+    explicit PublicKey(const char * secHex){ reset(); from_str(secHex, strlen(secHex)); };
     // do I need this?
-    PublicKey(ECPoint p):PublicKey(p.point, p.compressed){};
+    PublicKey(ECPoint p){ reset(); memcpy(point, p.point, 64); compressed=p.compressed; };
     /**
      *  \brief Fills `addr` with legacy Pay-To-Pubkey-Hash address (P2PKH, `1...` for mainnet)
      */
@@ -389,7 +389,7 @@ public:
         other.parentFingerprint, other.childNumber, other.network, other.type){};
 */
 #if USE_ARDUINO_STRING
-    HDPublicKey(String pub){ from_str(pub.c_str(), pub.length()); };
+    HDPublicKey(String pub){ reset(); from_str(pub.c_str(), pub.length()); };
 #endif
     ~HDPublicKey();
     /** \brief Length of the key (78). */
@@ -494,14 +494,14 @@ public:
     Script();
     Script(const uint8_t * buffer, size_t len);
     /** \brief creates a script from address */
-    Script(const char * address){ fromAddress(address); };
+    Script(const char * address){ init(); fromAddress(address); };
 #if USE_ARDUINO_STRING
     /** \brief creates a script from address */
-    Script(const String address){ fromAddress(address.c_str()); };
+    Script(const String address){ init(); fromAddress(address.c_str()); };
 #endif
 #if USE_STD_STRING
     /** \brief creates a script from address */
-    Script(const std::string address){ fromAddress(address.c_str()); };
+    Script(const std::string address){ init(); fromAddress(address.c_str()); };
 #endif
     /** \brief creates one of standart scripts (P2PKH, P2WPKH) */
     Script(const PublicKey pubkey, ScriptType type = P2PKH);

@@ -776,7 +776,6 @@ size_t fromBase64(const char * encoded, size_t encodedSize, uint8_t * output, si
         }
         if(outputSize < 3*(cur+1)){
             memzero(output, outputSize);
-            printf("6 %lu < 3* %lu+1\n", outputSize, cur);
             return 0;
         }
         intToBigEndian(val, output+3*cur, 3);

@@ -21,6 +21,8 @@ using std::string;
 void HDPrivateKey::init(){
     reset();
     memzero(chainCode, 32);
+    memzero(num, 32);
+    pubKey.compressed = true;
     depth = 0;
     memzero(parentFingerprint, 4);
     childNumber = 0;
@@ -28,7 +30,7 @@ void HDPrivateKey::init(){
     status = PARSING_DONE;
     pubKey.compressed = true;
 }
-HDPrivateKey::HDPrivateKey(void):PrivateKey(){
+HDPrivateKey::HDPrivateKey(void){
     init();
 }
 HDPrivateKey::HDPrivateKey(const uint8_t secret[32],
@@ -37,8 +39,12 @@ HDPrivateKey::HDPrivateKey(const uint8_t secret[32],
                            const uint8_t parent_fingerprint_arr[4],
                            uint32_t child_number,
                            const Network * net,
-                           ScriptType key_type):PrivateKey(secret, true, net){
+                           ScriptType key_type){
     init();
+    memcpy(num, secret, 32);
+    network = net;
+    pubKey = *this * GeneratorPoint;
+    pubKey.compressed = true;
     type = key_type;
     memcpy(chainCode, chain_code, 32);
     depth = key_depth;
@@ -676,8 +682,10 @@ HDPublicKey::HDPublicKey(const uint8_t p[64],
                            const uint8_t parent_fingerprint_arr[4],
                            uint32_t child_number,
                            const Network * net,
-                           ScriptType key_type):HDPublicKey(){
+                           ScriptType key_type){
+    reset();
     memcpy(point, p, 64);
+    memzero(prefix, 4);
     compressed = true;
     type = key_type;
     network = net;
@@ -702,7 +710,10 @@ HDPublicKey &HDPublicKey::operator=(const HDPublicKey &other){
     memcpy(parentFingerprint, other.parentFingerprint, 4);
     return *this;
 };*/
-HDPublicKey::HDPublicKey(const char * xpubArr):HDPublicKey(){
+HDPublicKey::HDPublicKey(const char * xpubArr){
+    reset();
+    memzero(prefix, 4);
+    childNumber = 0;
     network = &DEFAULT_NETWORK;
     from_str(xpubArr, strlen(xpubArr));
 }

@@ -527,7 +527,9 @@ size_t PSBT::length() const{
     return len;
 }
 
-PSBT::PSBT(PSBT const &other):PSBT(){
+PSBT::PSBT(PSBT const &other){
+    reset();
+    txInsMeta = NULL; txOutsMeta = NULL; status = PARSING_DONE; current_section = 0; last_key_pos = 0;
     tx = other.tx;
     status = other.status;
     txInsMeta = new PSBTInputMetadata[tx.inputsNumber];

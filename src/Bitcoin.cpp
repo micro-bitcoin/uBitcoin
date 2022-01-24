@@ -172,22 +172,25 @@ bool checkMnemonic(const String mnemonic){
 // ---------------------------------------------------------------- Signature class
 
 Signature::Signature(){
-    memzero(tot, 3);
-    index = 0;
+    memzero(tot, 3); index = 0;
     memzero(r, 32);
     memzero(s, 32);
 }
-Signature::Signature(const uint8_t r_arr[32], const uint8_t s_arr[32]):Signature(){
+Signature::Signature(const uint8_t r_arr[32], const uint8_t s_arr[32]){
+    memzero(tot, 3); index = 0;
     memcpy(r, r_arr, 32);
     memcpy(s, s_arr, 32);
 }
-Signature::Signature(const uint8_t * der):Signature(){
+Signature::Signature(const uint8_t * der){
+    memzero(tot, 3); index = 0; memzero(r, 32); memzero(s, 32);
     fromDer(der, der[1]+2);
 }
-Signature::Signature(const uint8_t * der, size_t derLen):Signature(){
+Signature::Signature(const uint8_t * der, size_t derLen){
+    memzero(tot, 3); index = 0; memzero(r, 32); memzero(s, 32);
     fromDer(der, derLen);
 }
-Signature::Signature(const char * der):Signature(){
+Signature::Signature(const char * der){
+    memzero(tot, 3); index = 0; memzero(r, 32); memzero(s, 32);
     ParseByteStream s(der);
     Signature::from_stream(&s);
 }

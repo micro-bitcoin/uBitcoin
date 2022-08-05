@@ -1,3 +1,5 @@
+#ifdef UBTC_TEST // only compile with test flag
+
 #include "minunit.h"
 #include "Bitcoin.h"
 
@@ -21,3 +23,5 @@ int main(int argc, char *argv[]) {
   MU_REPORT();
   return MU_EXIT_CODE;
 }
+
+#endif // UBTC_TEST

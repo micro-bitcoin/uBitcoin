@@ -1,3 +1,5 @@
+#ifdef UBTC_TEST // only compile with test flag
+
 #include "minunit.h"
 #include "Hash.h"  // all single-line hashing algorithms
 #include "Conversion.h" // to print byte arrays in hex format
@@ -71,3 +73,5 @@ int main(int argc, char *argv[]) {
   MU_REPORT();
   return MU_EXIT_CODE;
 }
+
+#endif // UBTC_TEST

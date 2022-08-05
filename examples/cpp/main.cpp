@@ -1,3 +1,11 @@
+/*
+ * A simple example showing how to work with uBitcoin in c++ on a PC
+ */
+
+// only compile when UBTC_EXAMPLE flag is provided
+// to not clash with platformio's compile-everything approach
+#ifdef UBTC_EXAMPLE
+
 #include <iostream>
 #include "Bitcoin.h"
 #include "PSBT.h"
@@ -72,3 +80,5 @@ int main() {
 
     return 0;
 }
+
+#endif // UBTC_EXAMPLE

@@ -262,6 +262,12 @@ public:
     std::string nestedSegwitAddress() const;
 #endif
 //    PrivateKey &operator=(const PrivateKey &other);                   // assignment
+    /** \brief Performs ECDH key agreement using public key of another party.
+     *  32-byte shared secret will be written to `shared_secret` array.
+     *  Optional parameter hash (true by default) defines if you want sha256(<x><y>) or just <x>.
+     *  Having hash=true is recommended unless you have a very good reason not to use it.
+     */
+    int ecdh(const PublicKey pub, uint8_t shared_secret[32], bool hash=true);
 };
 
 /**

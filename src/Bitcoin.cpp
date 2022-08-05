@@ -606,6 +606,21 @@ String PrivateKey::nestedSegwitAddress() const{
 }
 #endif
 
+int PrivateKey::ecdh(const PublicKey pub, uint8_t shared_secret[32], bool use_hash){
+    // calculate pk * pub, serialize as uncompressed point and hash <x><y>
+    ECPoint mult = *this * pub;
+    mult.compressed = false;
+    uint8_t sec[65];
+    mult.sec(sec, sizeof(sec));
+    if(use_hash){
+        sha256(sec+1, 64, shared_secret);
+    }else{
+        // just copy x
+        memcpy(shared_secret, sec+1, 32);
+    }
+    return 1;
+}
+
 static int is_canonical(uint8_t by, uint8_t sig[64]){
   return 1;
 }

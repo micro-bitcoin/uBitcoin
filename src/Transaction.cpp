@@ -148,15 +148,17 @@ size_t TxOut::from_stream(ParseStream *s){
     }
     if(status == PARSING_DONE){
         bytes_parsed = 0;
+        memset(tmp, 0, sizeof(tmp));
         amount = 0;
         scriptPubkey.clear(); scriptPubkey.reset();
     }
     status = PARSING_INCOMPLETE;
     size_t bytes_read = 0;
     while(s->available() && bytes_read+bytes_parsed<8){
-        uint64_t c = s->read();
-        amount += (c << (8*(bytes_read+bytes_parsed-32)));
+        uint8_t c = s->read();
+        tmp[bytes_read+bytes_parsed] = c;
         bytes_read++;
+        amount = littleEndianToInt(tmp, 8);
     }
     if(s->available() && bytes_read+bytes_parsed == 8){
         bytes_read += s->parse(&scriptPubkey);

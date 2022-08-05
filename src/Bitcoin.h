@@ -622,6 +622,8 @@ public:
  *         Stores information the amount and ScriptPubkey,
  */
 class TxOut : public Streamable{
+private:
+    uint8_t tmp[8]; // for parsing amounts
 protected:
     virtual size_t from_stream(ParseStream *s);
     virtual size_t to_stream(SerializeStream *s, size_t offset = 0) const;

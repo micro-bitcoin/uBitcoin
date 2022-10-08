@@ -96,27 +96,27 @@ static void init_ram_seed() {
 	// obtain some entropy from uninitialized heap memory
 	uint8_t * uninitialized_heap = (uint8_t *)malloc(UNINITIALIZED_ENTROPY_SIZE);
 	if (uninitialized_heap == NULL) {
-		return;
+		while(1){}; // non recoverable error
 	}
 	
 	// fail if stack or heap are zero-filled
 	if (is_zero_filled(uninitialized_stack_entropy)) {
 	    //printf("FAIL: Uninitialized stack is zero-filled\n");
-	    return;
+	    while(1){}; // non recoverable error
 	}
 	if (is_zero_filled(uninitialized_heap)) {
 	    //printf("FAIL: Uninitialized heap is zero-filled\n");
-	    return;
+	    while(1){}; // non recoverable error
 	}
 	
 	// fail if stack or heap are 32bit pattern-filled
 	if (is_pattern_filled((uint32_t *)uninitialized_stack_entropy)) {
 	    //printf("FAIL: Uninitialized stack is pattern-filled\n");
-	    return;
+	    while(1){}; // non recoverable error
 	}
 	if (is_pattern_filled((uint32_t *)uninitialized_heap)) {
 	    //printf("FAIL: Uninitialized heap is pattern-filled\n");
-	    return;
+	    while(1){}; // non recoverable error
 	}
 	
 	// SHA256(Uninitialized heap | Uninitialized stack)

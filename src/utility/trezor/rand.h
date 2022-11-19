@@ -32,7 +32,6 @@ extern "C"
 {
 #endif
 
-void random_reseed(const uint32_t value);
 uint32_t random32(void);
 void random_buffer(uint8_t *buf, size_t len);
 

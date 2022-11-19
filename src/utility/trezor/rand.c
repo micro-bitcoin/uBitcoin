@@ -21,58 +21,116 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
+// Node: heavily edited by uBitcoin developers with inspiration from micropython source code.
+
 #include "rand.h"
 #include "sha2.h"
 #include <string.h>
 
-// #ifndef RAND_PLATFORM_INDEPENDENT
+// esp boards
+#if defined(ESP_PLATFORM)
 
-static uint32_t seed = 0;
-static uint8_t hash[32];
+  #include <esp_system.h>
+  uint32_t __attribute__((weak)) random32(void){
+    return esp_random();
+  }
 
-/* 
- * On boot there is random some device-dependent junk in the RAM
- * It may depend on the platform, but in most cases it can be used
- * to get some device-specific randomness.
- * This is a junky-code that may be not perfect
- * but works much better than normal non-cryptographic PRNGs
- * 
- * Replace the random32() function with your own secure code.
- * There is also a possibility to replace the random_buffer() function 
- * as it is defined as a weak symbol.
- */
+#elif defined(ESP8266)
+  // see http://esp8266-re.foogod.com/wiki/Random_Number_Generator
+  #define WDEV_HWRNG ((volatile uint32_t*)0x3ff20e44)
+  uint32_t __attribute__((weak)) random32(void){
+    uint32_t rngint = 0;
+    uint32_t v = 0;
+    for(int i=0; i<4; i++){
+      v = (*WDEV_HWRNG);
+      rngint = (rngint << 8) | v;
+    }
+    return rngint;
+  }
 
-static void init_ram_seed(){
-	uint8_t * arr = (uint8_t *)malloc(1000); // just allocate some memory
-	if(arr == NULL){
-		return;
-	}
-	memcpy(arr, hash, 32); // to maintain previous entropy, kinda
-	sha256_Raw(arr, 1000, hash);
-	free(arr);
-	seed++;
-}
+// stm boards
+#elif defined(STM32F0) || defined(STM32F4) || defined(STM32F7) || defined(STM32L0) || defined(STM32L4) || defined(STM32H7) || defined(STM32WB) || defined(STM32G0)
 
-void random_reseed(const uint32_t value)
-{
-	seed = value;
-}
+  #if defined(RNG)
+
+    // taken from micropython source code
+    #define RNG_TIMEOUT_MS (10)
+
+    uint32_t __attribute__((weak)) random32(void) {
+        // Enable the RNG peripheral if it's not already enabled
+        if (!(RNG->CR & RNG_CR_RNGEN)) {
+            #if defined(STM32H7)
+            // Set RNG Clock source
+            __HAL_RCC_PLLCLKOUT_ENABLE(RCC_PLL1_DIVQ);
+            __HAL_RCC_RNG_CONFIG(RCC_RNGCLKSOURCE_PLL);
+            #endif
+            __HAL_RCC_RNG_CLK_ENABLE();
+            RNG->CR |= RNG_CR_RNGEN;
+        }
+
+        // Wait for a new random number to be ready, takes on the order of 10us
+        uint32_t start = HAL_GetTick();
+        while (!(RNG->SR & RNG_SR_DRDY)) {
+            if (HAL_GetTick() - start >= RNG_TIMEOUT_MS) {
+                return 0;
+            }
+        }
+
+        // Get and return the new random number
+        return RNG->DR;
+    }
+  #else
+
+    // fallback to prng
+    #define UBTC_USE_PRNG
+
+  #endif // defined RNG
+
+// PC
+#elif defined(__unix__) || defined(__APPLE__) || defined(_WIN32) || defined(_WIN64) || defined(__CYGWIN__) || defined(__ANDROID__)
+
+// rand from os random source
+#include <stdlib.h>
 
 uint32_t __attribute__((weak)) random32(void){
-	if(seed == 0){
-		init_ram_seed();
-	}
-	SHA256_CTX	context;
-	sha256_Init(&context);
-	sha256_Update(&context, hash, 32);
-	sha256_Update(&context, (uint8_t *)&seed, 4);
-	sha256_Final(&context, hash);
-	uint32_t * results = (uint32_t *)hash;
-	seed = results[0];
-	return results[1];
+    return (uint32_t)rand();
 }
 
-// #endif /* RAND_PLATFORM_INDEPENDENT */
+#else
+
+// fallback to prng
+#define UBTC_USE_PRNG
+
+#endif
+
+// fallback option if no RNG on this platform
+#ifdef UBTC_USE_PRNG
+
+#pragma message("\nWARGNING! RANDOM NUMBER GENERATOR IS NOT SUPPORTED ON THIS PLATFORM! \n\
+Pseudo-random generator will be used unless you define\n\
+your own random function like so: \n\n\
+extern \"C\" { \n\
+  uint32_t random32(){\n\
+    ...get random value somehow...\n\
+    return value;\n\
+  }\n\
+}")
+
+
+uint32_t __attribute__((weak)) random32(void) {
+    static uint32_t pad = 0xeda4baba, n = 69, d = 233;
+    static uint8_t dat = 0;
+
+    pad += dat + d * n;
+    pad = (pad << 3) + (pad >> 29);
+    n = pad | 2;
+    d ^= (pad << 31) + (pad >> 1);
+    dat ^= (char)pad ^ (d >> 8) ^ 1;
+
+    return pad ^ (d << 5) ^ (pad >> 18) ^ (dat << 1);
+}
+
+#endif // UBTC_USE_PRNG
 
 //
 // The following code is platform independent

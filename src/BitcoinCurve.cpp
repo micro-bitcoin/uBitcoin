@@ -253,6 +253,13 @@ bool ECScalar::operator<(const ECScalar& other) const{
 	bn_read_be(other.num, &b);
 	return bn_is_less(&a, &b);
 }
+bool ECPoint::operator<(const ECPoint& other) const{
+	uint8_t sec1[65];
+	uint8_t sec2[65];
+	sec(sec1, sizeof(sec1));
+	other.sec(sec2, sizeof(sec2));
+	return memcmp(sec1, sec2, sizeof(sec1)) > 0;
+}
 ECPoint operator*(const ECScalar& scalar, const ECPoint& point){
 	ECPoint r;
 	uint8_t num[32];

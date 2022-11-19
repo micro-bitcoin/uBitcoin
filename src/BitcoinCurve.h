@@ -59,6 +59,12 @@ public:
     ECPoint operator-(const ECPoint& other) const;
     ECPoint operator+=(const ECPoint& other){ *this = *this+other; return *this; };
     ECPoint operator-=(const ECPoint& other){ *this = *this-other; return *this; };
+
+    // sec-hex-comparison for multisig sorting
+    bool operator<(const ECPoint& other) const;
+    bool operator>(const ECPoint& other) const{ return (other<*this); };
+    bool operator>=(const ECPoint& other) const{ return !(*this<other); };
+    bool operator<=(const ECPoint& other) const{ return !(*this>other); };
 };
 
 extern const ECPoint InfinityPoint;

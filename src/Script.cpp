@@ -11,6 +11,118 @@ using std::string;
 
 #define MAX_SCRIPT_SIZE 10000
 
+//------------------------------------------------------------ Script-generating functions
+
+Script pkh(PublicKey pub){
+    // 76 a9 14 hash160(pubkey.sec()) 88 ac
+    uint8_t buffer[] = { 0x76, 0xa9, 0x14, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 0x88,0xac};
+    uint8_t sec_arr[65] = { 0 };
+    int l = pub.sec(sec_arr, sizeof(sec_arr));
+    hash160(sec_arr, l, buffer+3);
+    return Script(buffer, sizeof(buffer));
+}
+
+Script wpkh(PublicKey pub){
+    // 00 14 hash160(pub.sec())
+    uint8_t buffer[] = { 0x00, 0x14, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+    uint8_t sec_arr[65] = { 0 };
+    int l = pub.sec(sec_arr, sizeof(sec_arr));
+    hash160(sec_arr, l, buffer+2);
+    return Script(buffer, sizeof(buffer));
+}
+
+Script multi(uint8_t threshold, const PublicKey * pubkeys, uint8_t pubkeys_len){
+    Script sc;
+    if(threshold > pubkeys_len || pubkeys_len == 0 || pubkeys_len > 16 || threshold == 0){
+        // returning empty script
+        return sc;
+    }
+    // OP_M
+    sc.push(OP_1+threshold-1);
+    // pubkeys
+    for(int i=0; i<pubkeys_len; i++){
+        sc.push(pubkeys[i]);
+    }
+    // OP_N OP_CHECKMULTISIG
+    sc.push(OP_1+pubkeys_len-1);
+    sc.push(OP_CHECKMULTISIG);
+    return sc;
+}
+
+// function to swap elements
+static void swap(PublicKey *a, PublicKey *b) {
+  PublicKey t = *a;
+  *a = *b;
+  *b = t;
+}
+
+// function to find the partition position
+static int partition(PublicKey array[], int low, int high) {
+  
+  // select the rightmost element as pivot
+  PublicKey pivot = array[high];
+  
+  // pointer for greater element
+  int i = (low - 1);
+
+  // traverse each element of the array
+  // compare them with the pivot
+  for (int j = low; j < high; j++) {
+    if (array[j] <= pivot) {
+        
+      // if element smaller than pivot is found
+      // swap it with the greater element pointed by i
+      i++;
+      
+      // swap element at i with element at j
+      swap(&array[i], &array[j]);
+    }
+  }
+
+  // swap the pivot element with the greater element at i
+  swap(&array[i + 1], &array[high]);
+  
+  // return the partition point
+  return (i + 1);
+}
+
+static void quickSort(PublicKey array[], int low, int high) {
+  if (low < high) {
+    
+    // find the pivot element such that
+    // elements smaller than pivot are on left of pivot
+    // elements greater than pivot are on right of pivot
+    int pi = partition(array, low, high);
+    
+    // recursive call on the left of pivot
+    quickSort(array, low, pi - 1);
+    
+    // recursive call on the right of pivot
+    quickSort(array, pi + 1, high);
+  }
+}
+
+Script sortedmulti(uint8_t threshold, const PublicKey * pubkeys, uint8_t pubkeys_len){
+    // sort first
+    PublicKey * sortedkeys = (PublicKey *) pubkeys;
+    // TODO: the most
+    return multi(threshold, sortedkeys, pubkeys_len);
+}
+
+Script wsh(Script witness_script){
+    // 00 20 sha256(script.data)
+    uint8_t buffer[] = { 0x00, 0x20, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+    sha256(witness_script.scriptArray, witness_script.scriptLen, buffer+2);
+    return Script(buffer, sizeof(buffer));
+}
+
+Script sh(Script script){
+    // "a9 14" + hash160(script.data) + "87"
+    uint8_t buffer[] = { 0xa9, 0x14, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 0x87 };
+    hash160(script.scriptArray, script.scriptLen, buffer+2);
+    return Script(buffer, sizeof(buffer));
+}
+
 //------------------------------------------------------------ Script
 void Script::init(){
     reset();

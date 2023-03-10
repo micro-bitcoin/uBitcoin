@@ -72,6 +72,15 @@ protected:
     HMAC_SHA256_CTX ctx;
 };
 
+/************************ Tagged hash ************************/
+
+class TaggedHash : public SHA256{
+public:
+    TaggedHash(const char * tag);
+};
+
+int tagged_hash(const char * tag, const uint8_t * data, size_t dataLen, uint8_t hash[32]);
+
 /************************* Hash-160 **************************/
 /******************** rmd160( sha256( m ) ) ******************/
 

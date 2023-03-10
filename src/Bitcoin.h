@@ -60,6 +60,7 @@ enum SigHashType{
 
 /* forward declarations */
 class Signature;
+class SchnorrSignature;
 class PublicKey;
 class PrivateKey;
 class HDPublicKey;
@@ -109,8 +110,7 @@ public:
     PublicKey(const uint8_t pubkeyArr[64], bool use_compressed){ reset(); memcpy(point, pubkeyArr, 64); compressed=use_compressed; };
     PublicKey(const uint8_t * secArr){ reset(); parse(secArr, 33 + ((uint8_t)(secArr[0]==0x04))*32); };
     explicit PublicKey(const char * secHex){ reset(); from_str(secHex, strlen(secHex)); };
-    // do I need this?
-    PublicKey(ECPoint p){ reset(); memcpy(point, p.point, 64); compressed=p.compressed; };
+    PublicKey(const ECPoint p){ reset(); memcpy(point, p.point, 64); compressed=p.compressed; };
     /**
      *  \brief Fills `addr` with legacy Pay-To-Pubkey-Hash address (P2PKH, `1...` for mainnet)
      */
@@ -143,6 +143,7 @@ public:
      *  \brief verifies the ECDSA signature of the hash of the message
      */
     bool verify(const Signature sig, const uint8_t hash[32]) const;
+    bool schnorr_verify(const SchnorrSignature sig, const uint8_t hash[32]) const;
     /**
      *  \brief Returns a Script with the type: `P2PKH`, `P2WPKH` or `P2SH_P2WPKH`
      */
@@ -164,6 +165,7 @@ protected:
 public:
     PrivateKey();
     PrivateKey(const uint8_t secret_arr[32], bool use_compressed = true, const Network * net = &DEFAULT_NETWORK);
+    PrivateKey(const ECScalar sc);
 #if USE_ARDUINO_STRING
     PrivateKey(const String wifString);
 #elif USE_STD_STRING
@@ -195,6 +197,7 @@ public:
     PublicKey publicKey() const;
     /** \brief Signs the hash and returns the Signature */
     Signature sign(const uint8_t hash[32]) const; // pass 32-byte hash of the message here
+    SchnorrSignature schnorr_sign(const uint8_t hash[32]) const;
 
     /** \brief Alias for .publicKey().address(network) */
     int address(char * address, size_t len) const;
@@ -436,6 +439,26 @@ public:
 
     bool operator==(const Signature& other) const{ return (memcmp(r, other.r, 32) == 0) && (memcmp(s, other.s, 32) == 0); };
     bool operator!=(const Signature& other) const{ return !operator==(other); };
+};
+
+class SchnorrSignature : public Streamable{
+protected:
+    uint8_t r[32];
+    uint8_t s[32];
+    virtual size_t from_stream(ParseStream *s);
+    virtual size_t to_stream(SerializeStream *s, size_t offset = 0) const;
+public:
+    SchnorrSignature();
+    SchnorrSignature(const uint8_t r_arr[32], const uint8_t s_arr[32]);
+    SchnorrSignature(const uint8_t rs_arr[64]);
+    explicit SchnorrSignature(const char * rs);
+    virtual size_t length() const{ return 64; };
+
+    bool isValid() const{ uint8_t arr[32] = { 0 }; return !((memcmp(r, arr, 32) == 0) && (memcmp(s, arr, 32)==0)); };
+    explicit operator bool() const{ return isValid(); };
+
+    bool operator==(const SchnorrSignature& other) const{ return (memcmp(r, other.r, 32) == 0) && (memcmp(s, other.s, 32) == 0); };
+    bool operator!=(const SchnorrSignature& other) const{ return !operator==(other); };
 };
 
 /**

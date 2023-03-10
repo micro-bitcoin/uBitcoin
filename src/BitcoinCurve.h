@@ -4,6 +4,7 @@
 #include "uBitcoin_conf.h"
 #include "BaseClasses.h"
 #include "utility/trezor/memzero.h"
+#include "Conversion.h"
 
 class ECPoint : public Streamable{
 protected:
@@ -24,6 +25,21 @@ public:
 
     size_t sec(uint8_t * arr, size_t len) const;
     size_t fromSec(const uint8_t * arr, size_t len);
+    size_t x(uint8_t * arr, size_t len) const{
+        if(len < 32){
+            return 0;
+        }
+        memcpy(arr, point, 32);
+        return 32;
+    };
+    size_t from_x(const uint8_t * arr, size_t len){
+        if(len < 32){
+            return 0;
+        }
+        uint8_t sec[33] = {0x02};
+        memcpy(sec+1, arr, 32);
+        return fromSec(sec, sizeof(sec));
+    }
 #if USE_ARDUINO_STRING
     String sec() const{
         char arr[65*2+1] = "";
@@ -34,6 +50,11 @@ public:
         }
         String s(arr);
         return s;
+    };
+    String x() const{
+        uint8_t arr[32];
+        x(arr, sizeof(arr));
+        return toHex(arr, sizeof(arr));
     };
 #endif
 #if USE_STD_STRING
@@ -47,9 +68,15 @@ public:
         std::string s(arr);
         return s;
     };
+    std::string x() const{
+        uint8_t arr[32];
+        x(arr, sizeof(arr));
+        return toHex(arr, sizeof(arr));
+    };
 #endif
     // bool verify(const Signature sig, const uint8_t hash[32]) const;
     virtual bool isValid() const;
+    bool isEven() const;
     explicit operator bool() const { return isValid(); };
     bool operator==(const ECPoint& other) const{ return (memcmp(point, other.point, 64) == 0); };
     bool operator!=(const ECPoint& other) const{ return !operator==(other); };

@@ -308,6 +308,65 @@ void Signature::fromBin(const uint8_t * arr, size_t len){
         index = arr[64];
     }
 }
+
+// ---------------------------------------------------------------- SchnorrSignature
+
+SchnorrSignature::SchnorrSignature(){
+    memzero(r, 32);
+    memzero(s, 32);
+}
+SchnorrSignature::SchnorrSignature(const uint8_t r_arr[32], const uint8_t s_arr[32]){
+    memcpy(r, r_arr, 32);
+    memcpy(s, s_arr, 32);
+}
+SchnorrSignature::SchnorrSignature(const uint8_t rs_arr[64]){
+    memcpy(r, rs_arr, 32);
+    memcpy(s, rs_arr+32, 32);
+}
+SchnorrSignature::SchnorrSignature(const char * rs){
+    memzero(r, 32); memzero(s, 32);
+    ParseByteStream s(rs);
+    SchnorrSignature::from_stream(&s);
+}
+size_t SchnorrSignature::from_stream(ParseStream *stream){
+    if(status == PARSING_FAILED){
+        return 0;
+    }
+    if(status == PARSING_DONE){
+        bytes_parsed = 0;
+        memzero(r, 32);
+        memzero(s, 32);
+    }
+    status = PARSING_INCOMPLETE;
+    size_t bytes_read = 0;
+    while(stream->available() && bytes_parsed+bytes_read < 32){
+        r[bytes_read+bytes_parsed] = stream->read();
+        bytes_read++;
+    }
+    while(stream->available() && bytes_parsed+bytes_read < 64){
+        s[bytes_read+bytes_parsed-32] = stream->read();
+        bytes_read++;
+    }
+    if(bytes_parsed+bytes_read == 64){
+        status = PARSING_DONE;
+    }
+    bytes_parsed+=bytes_read;
+    return bytes_read;
+}
+
+size_t SchnorrSignature::to_stream(SerializeStream *stream, size_t offset) const{
+    uint8_t arr[64];
+    memcpy(arr, r, 32);
+    memcpy(arr+32, s, 32);
+    size_t l = sizeof(arr);
+    size_t bytes_written = 0;
+    while(stream->available() && offset+bytes_written < l){
+        stream->write(arr[offset+bytes_written]);
+        bytes_written++;
+    }
+    return bytes_written;
+}
+
 // ---------------------------------------------------------------- PublicKey class
 
 int PublicKey::legacyAddress(char * address, size_t len, const Network * network) const{
@@ -382,6 +441,34 @@ bool PublicKey::verify(const Signature sig, const uint8_t hash[32]) const{
     serialize(pub, 65);
     return (ecdsa_verify_digest(&secp256k1, pub, signature, hash)==0);
 }
+bool PublicKey::schnorr_verify(const SchnorrSignature sig, const uint8_t hash[32]) const{
+    PublicKey pub = *this;
+    if(!pub.isEven()){
+        pub = -pub;
+    }
+    uint8_t rs[64];
+    sig.serialize(rs, sizeof(rs));
+    PublicKey R;
+    R.from_x(rs, 32);
+    // calculate hash using tagged hash with "BIP0340/challenge" prefix
+    uint8_t e[32];
+    uint8_t tmp[32];
+    TaggedHash tch("BIP0340/challenge");
+    // write R
+    tch.write(rs, 32);
+    // write xonly pubkey
+    pub.x(tmp, sizeof(tmp));
+    tch.write(tmp, sizeof(tmp));
+    // write message
+    tch.write(hash, 32);
+    tch.end(e);
+    PrivateKey challenge(e);
+    PublicKey S = challenge*pub + R;
+    S.x(tmp, sizeof(tmp));
+    PrivateKey s(rs+32);
+    s.publicKey().x(e, 32);
+    return memcmp(tmp, e, 32) == 0;
+};
 
 // ---------------------------------------------------------------- PrivateKey class
 
@@ -424,6 +511,13 @@ PrivateKey::PrivateKey(const uint8_t * secret_arr, bool use_compressed, const Ne
     network = net;
     pubKey = *this * GeneratorPoint;
     pubKey.compressed = use_compressed;
+}
+PrivateKey::PrivateKey(const ECScalar other){
+    reset();
+    other.getSecret(num);
+    pubKey = *this * GeneratorPoint;
+    pubKey.compressed = true;
+    network = &DEFAULT_NETWORK;
 }
 /*PrivateKey &PrivateKey::operator=(const PrivateKey &other){
     if (this == &other){ return *this; } // self-assignment
@@ -556,6 +650,52 @@ Signature PrivateKey::sign(const uint8_t hash[32]) const{
     ecdsa_sign_digest(&secp256k1, num, hash, signature, &i, &is_canonical);
     Signature sig(signature, signature+32);
     sig.index = i;
+    return sig;
+}
+
+SchnorrSignature PrivateKey::schnorr_sign(const uint8_t hash[32]) const{
+    PrivateKey prv = *this;
+    PublicKey pub = prv.publicKey();
+    // check if pubkey is even, if not - negate
+    if(!pub.isEven()){
+        prv = -prv;
+        pub = -pub;
+    }
+    uint8_t r[32];
+    uint8_t s[32];
+    uint8_t tmp[32];
+    // generate k using tagged hash with "BIP0340/nonce" prefix
+    uint8_t nonce[32];
+    TaggedHash tnonce("BIP0340/nonce");
+    prv.getSecret(tmp);
+    tnonce.write(tmp, sizeof(tmp));
+    pub.x(tmp, sizeof(tmp));
+    tnonce.write(tmp, sizeof(tmp));
+    tnonce.write(hash, 32);
+    tnonce.end(nonce);
+    PrivateKey k(nonce);
+    PublicKey R = k.publicKey();
+    // flip k if r is not even
+    if(!R.isEven()){
+        k = -k;
+        R = -R;
+    }
+
+    // calculate hash using tagged hash with "BIP0340/challenge" prefix
+    uint8_t e[32];
+    TaggedHash tch("BIP0340/challenge");
+    R.x(r, sizeof(r));
+    tch.write(r, sizeof(r));
+    pub.x(tmp, sizeof(tmp));
+    tch.write(tmp, sizeof(tmp));
+    tch.write(hash, 32);
+    tch.end(e);
+    PrivateKey challenge(e);
+    // calculate s
+    PrivateKey S = k + challenge*prv;
+    S.getSecret(s);
+
+    SchnorrSignature sig(r, s);
     return sig;
 }
 #if USE_ARDUINO_STRING || USE_STD_STRING

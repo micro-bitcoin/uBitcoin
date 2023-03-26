@@ -25,6 +25,7 @@ public:
 
     size_t sec(uint8_t * arr, size_t len) const;
     size_t fromSec(const uint8_t * arr, size_t len);
+    /** \brief fills array with x coordinate of the point */
     size_t x(uint8_t * arr, size_t len) const{
         if(len < 32){
             return 0;
@@ -32,6 +33,7 @@ public:
         memcpy(arr, point, 32);
         return 32;
     };
+    /** \brief parses x-only pubkey, from two possible points selects one with even y */
     size_t from_x(const uint8_t * arr, size_t len){
         if(len < 32){
             return 0;
@@ -76,6 +78,7 @@ public:
 #endif
     // bool verify(const Signature sig, const uint8_t hash[32]) const;
     virtual bool isValid() const;
+    /** \brief checks if pubkey has even Y coordinate */
     bool isEven() const;
     explicit operator bool() const { return isValid(); };
     bool operator==(const ECPoint& other) const{ return (memcmp(point, other.point, 64) == 0); };

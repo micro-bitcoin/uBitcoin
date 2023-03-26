@@ -143,6 +143,9 @@ public:
      *  \brief verifies the ECDSA signature of the hash of the message
      */
     bool verify(const Signature sig, const uint8_t hash[32]) const;
+    /**
+     *  \brief verifies the Schnorr signature of the hash of the message
+     */
     bool schnorr_verify(const SchnorrSignature sig, const uint8_t hash[32]) const;
     /**
      *  \brief Returns a Script with the type: `P2PKH`, `P2WPKH` or `P2SH_P2WPKH`
@@ -197,6 +200,7 @@ public:
     PublicKey publicKey() const;
     /** \brief Signs the hash and returns the Signature */
     Signature sign(const uint8_t hash[32]) const; // pass 32-byte hash of the message here
+    /** \brief Signs the hash using Schnorr algorithm and returns the SchnorrSignature */
     SchnorrSignature schnorr_sign(const uint8_t hash[32]) const;
 
     /** \brief Alias for .publicKey().address(network) */
@@ -441,6 +445,10 @@ public:
     bool operator!=(const Signature& other) const{ return !operator==(other); };
 };
 
+/**
+ *  \brief SchnorrSignature class.
+ *         Reference: https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki
+ */
 class SchnorrSignature : public Streamable{
 protected:
     uint8_t r[32];

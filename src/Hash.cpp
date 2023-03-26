@@ -69,6 +69,28 @@ int sha256(const String data, uint8_t hash[32]){
 }
 #endif
 
+TaggedHash::TaggedHash(const char * tag){
+    begin();
+    uint8_t th[32];
+    sha256(tag, strlen(tag), th);
+    write(th, 32);
+    write(th, 32);
+}
+
+int tagged_hash(const char * tag, const uint8_t * data, size_t dataLen, uint8_t hash[32]){
+    TaggedHash th(tag);
+    return hashData(&th, data, dataLen, hash);
+}
+int tagged_hash(const char * tag, const char * data, size_t len, uint8_t hash[32]){
+    return tagged_hash(tag, (uint8_t*)data, len, hash);
+}
+#if USE_ARDUINO_STRING || USE_STD_STRING
+int tagged_hash(const String tag, const String data, uint8_t hash[32]){
+    TaggedHash th(tag.c_str());
+    return hashString(&th, data, hash);
+}
+#endif
+
 int sha256Hmac(const uint8_t * key, size_t keyLen, const uint8_t * data, size_t dataLen, uint8_t hash[32]){
     ubtc_hmac_sha256(key, keyLen, data, dataLen, hash);
     return 32;
@@ -76,7 +98,7 @@ int sha256Hmac(const uint8_t * key, size_t keyLen, const uint8_t * data, size_t 
 
 void SHA256::begin(){
     sha256_Init(&ctx.ctx);
-};
+}
 void SHA256::beginHMAC(const uint8_t * key, size_t keySize){
     ubtc_hmac_sha256_Init(&ctx, key, keySize);
 }

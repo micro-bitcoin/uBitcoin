@@ -72,6 +72,25 @@ protected:
     HMAC_SHA256_CTX ctx;
 };
 
+/************************ Tagged hash ************************/
+
+/** \brief tagged hash class as defined in bip-schnorr (bip340) */
+class TaggedHash : public SHA256{
+public:
+    TaggedHash(const char * tag);
+};
+
+/** \brief tagged hash one-line hashing function → 32 bytes output */
+int tagged_hash(const char * tag, const uint8_t * data, size_t dataLen, uint8_t hash[32]);
+int tagged_hash(const char * tag, const char * data, size_t dataLen, uint8_t hash[32]);
+#if USE_ARDUINO_STRING
+int tagged_hash(const String tag, const String data, uint8_t hash[32]);
+#endif
+#if USE_STD_STRING
+int tagged_hash(const std::string tag, const std::string data, uint8_t hash[32]);
+#endif
+
+
 /************************* Hash-160 **************************/
 /******************** rmd160( sha256( m ) ) ******************/
 

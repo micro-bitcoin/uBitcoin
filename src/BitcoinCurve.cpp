@@ -114,6 +114,9 @@ bool ECPoint::isValid() const{
 	sec(buf, 65);
 	return ecdsa_read_pubkey(&secp256k1, buf, &pub);
 };
+bool ECPoint::isEven() const{
+    return !bool(point[63] & 0x01);
+};
 
 ECPoint ECPoint::operator+(const ECPoint& other) const{
 	if(*this == InfinityPoint){
@@ -138,12 +141,17 @@ ECPoint ECPoint::operator-() const{
 	if(*this == InfinityPoint){
 		return *this;
 	}
-	ECPoint a = *this;
-	bignum256 y;
-	bn_read_be(point+32, &y);
-	bn_inverse(&y, &secp256k1.prime);
-	bn_write_be(&y, a.point+32);
-	return a;
+    uint8_t buf[33];
+    x(buf+1, 32);
+    if(isEven()){
+        buf[0] = 0x03;
+    }else{
+        buf[0] = 0x02;
+    }
+    ECPoint a;
+    a.fromSec(buf, 33);
+    a.compressed = compressed;
+    return a;
 }
 ECPoint ECPoint::operator-(const ECPoint& other) const{
 	ECPoint a = -other;
@@ -160,24 +168,24 @@ size_t ECScalar::from_stream(ParseStream *s){
 		bytes_parsed = 0;
 	}
 	status = PARSING_INCOMPLETE;
-    size_t bytes_read = 0;
-    while(s->available() > 0 && bytes_parsed+bytes_read < 32){
-        num[bytes_parsed+bytes_read] = s->read();
-        bytes_read++;
-    }
-    if(bytes_parsed+bytes_read == 32){
-    	status = PARSING_DONE;
-	    uint8_t zero[32] = { 0 };
-	    if(memcmp(num, zero, 32)==0){ // should we add something else here?
-	    	status = PARSING_FAILED;
-	    }
-	    bignum256 n;
-	    bn_read_be(num, &n);
-	    bn_mod(&n, &secp256k1.order);
-	    bn_write_be(&n, num);
-    }
-    bytes_parsed += bytes_read;
-    return bytes_read;
+	size_t bytes_read = 0;
+	while(s->available() > 0 && bytes_parsed+bytes_read < 32){
+		num[bytes_parsed+bytes_read] = s->read();
+		bytes_read++;
+	}
+	if(bytes_parsed+bytes_read == 32){
+		status = PARSING_DONE;
+		uint8_t zero[32] = { 0 };
+		if(memcmp(num, zero, 32)==0){ // should we add something else here?
+		status = PARSING_FAILED;
+		}
+		bignum256 n;
+		bn_read_be(num, &n);
+		bn_mod(&n, &secp256k1.order);
+		bn_write_be(&n, num);
+	}
+	bytes_parsed += bytes_read;
+	return bytes_read;
 }
 size_t ECScalar::to_stream(SerializeStream *s, size_t offset) const{
 	size_t bytes_written = 0;
@@ -192,16 +200,16 @@ ECScalar ECScalar::operator+(const ECScalar& other) const{
 	bn_read_be(this->num, &a);
 	bn_read_be(other.num, &b);
 	bn_addmod(&a, &b, &secp256k1.order);
-    bn_mod(&a, &secp256k1.order);
+	bn_mod(&a, &secp256k1.order);
 	ECScalar sum;
 	bn_write_be(&a, sum.num);
 	return sum;
 }
 ECScalar ECScalar::operator+(const uint32_t& i) const{
-    bignum256 a;
+	bignum256 a;
 	bn_read_be(this->num, &a);
 	bn_addi(&a, i);
-    bn_mod(&a, &secp256k1.order);
+	bn_mod(&a, &secp256k1.order);
 	ECScalar sum;
 	bn_write_be(&a, sum.num);
 	return sum;

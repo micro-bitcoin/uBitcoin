@@ -30,6 +30,7 @@ HDPrivateKey	KEYWORD1
 HDPublicKey	KEYWORD1
 Script	KEYWORD1
 Signature	KEYWORD1
+SchnorrSignature	KEYWORD1
 Tx	KEYWORD1
 TxIn	KEYWORD1
 TxOut	KEYWORD1
@@ -58,6 +59,9 @@ address	KEYWORD2
 
 pow	KEYWORD2
 sign	KEYWORD2
+schnorr_sign	KEYWORD2
+verify	KEYWORD2
+schnorr_verify	KEYWORD2
 fromSeed	KEYWORD2
 fromMnemonic	KEYWORD2
 xpub	KEYWORD2

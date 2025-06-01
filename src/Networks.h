@@ -39,14 +39,14 @@ typedef struct {
     uint8_t Zpub[4]; 
     /** \brief bip32 coin index */
     uint32_t bip32;
-} Network;
+} BitcoinNetwork;
 
-extern const Network Mainnet;
-extern const Network Testnet;
-extern const Network Regtest;
-extern const Network Signet;
+extern const BitcoinNetwork Mainnet;
+extern const BitcoinNetwork Testnet;
+extern const BitcoinNetwork Regtest;
+extern const BitcoinNetwork Signet;
 
-extern const Network * networks[];
+extern const BitcoinNetwork * networks[];
 extern const uint8_t networks_len;
 
 #endif // __UBTC_NETWORKS_H__

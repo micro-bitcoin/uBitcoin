@@ -31,6 +31,7 @@
 #if defined(ESP_PLATFORM)
 
   #include <esp_system.h>
+  #include <esp_random.h>
   uint32_t __attribute__((weak)) random32(void){
     return esp_random();
   }

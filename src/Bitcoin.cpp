@@ -369,7 +369,7 @@ size_t SchnorrSignature::to_stream(SerializeStream *stream, size_t offset) const
 
 // ---------------------------------------------------------------- PublicKey class
 
-int PublicKey::legacyAddress(char * address, size_t len, const Network * network) const{
+int PublicKey::legacyAddress(char * address, size_t len, const BitcoinNetwork * network) const{
     memzero(address, len);
 
     uint8_t buffer[20];
@@ -384,13 +384,13 @@ int PublicKey::legacyAddress(char * address, size_t len, const Network * network
     return toBase58Check(addr, 21, address, len);
 }
 #if USE_ARDUINO_STRING || USE_STD_STRING
-String PublicKey::legacyAddress(const Network * network) const{
+String PublicKey::legacyAddress(const BitcoinNetwork * network) const{
     char addr[40] = { 0 };
     legacyAddress(addr, sizeof(addr), network);
     return String(addr);
 }
 #endif
-int PublicKey::segwitAddress(char address[], size_t len, const Network * network) const{
+int PublicKey::segwitAddress(char address[], size_t len, const BitcoinNetwork * network) const{
     memzero(address, len);
     if(len < 76){ // TODO: 76 is too much for native segwit
         return 0;
@@ -403,13 +403,13 @@ int PublicKey::segwitAddress(char address[], size_t len, const Network * network
     return 76;
 }
 #if USE_ARDUINO_STRING || USE_STD_STRING
-String PublicKey::segwitAddress(const Network * network) const{
+String PublicKey::segwitAddress(const BitcoinNetwork * network) const{
     char addr[76] = { 0 };
     segwitAddress(addr, sizeof(addr), network);
     return String(addr);
 }
 #endif
-int PublicKey::nestedSegwitAddress(char address[], size_t len, const Network * network) const{
+int PublicKey::nestedSegwitAddress(char address[], size_t len, const BitcoinNetwork * network) const{
     memzero(address, len);
     uint8_t script[22] = { 0 };
     // script[0] = 0x00; // no need to set - already zero
@@ -425,7 +425,7 @@ int PublicKey::nestedSegwitAddress(char address[], size_t len, const Network * n
     return toBase58Check(addr, 21, address, len);
 }
 #if USE_ARDUINO_STRING || USE_STD_STRING
-String PublicKey::nestedSegwitAddress(const Network * network) const{
+String PublicKey::nestedSegwitAddress(const BitcoinNetwork * network) const{
     char addr[40] = { 0 };
     nestedSegwitAddress(addr, sizeof(addr), network);
     return String(addr);
@@ -505,7 +505,7 @@ PrivateKey::PrivateKey(void){
     memzero(num, 32); // empty key
     network = &DEFAULT_NETWORK;
 }
-PrivateKey::PrivateKey(const uint8_t * secret_arr, bool use_compressed, const Network * net){
+PrivateKey::PrivateKey(const uint8_t * secret_arr, bool use_compressed, const BitcoinNetwork * net){
     reset();
     memcpy(num, secret_arr, 32);
     network = net;

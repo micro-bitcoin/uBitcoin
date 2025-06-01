@@ -1,7 +1,7 @@
 // all known networks
 #include "Networks.h"
 
-const Network Mainnet = {
+const BitcoinNetwork Mainnet = {
     0x00, // p2pkh
     0x05, // p2sh
     "bc", // bech32
@@ -19,7 +19,7 @@ const Network Mainnet = {
     0 // bip32 coin type
 };
 
-const Network Testnet = {
+const BitcoinNetwork Testnet = {
     0x6F, // p2pkh
     0xC4, // p2sh
     "tb", // bech32
@@ -37,7 +37,7 @@ const Network Testnet = {
     1 // bip32 coin type
 };
 
-const Network Regtest = {
+const BitcoinNetwork Regtest = {
     0x6F, // p2pkh
     0xC4, // p2sh
     "bcrt", // bech32
@@ -56,7 +56,7 @@ const Network Regtest = {
 };
 
 // signet is the same as testnet
-const Network Signet = Testnet;
+const BitcoinNetwork Signet = Testnet;
 
-const Network * networks[4] = { &Mainnet, &Testnet, &Regtest, &Signet };
+const BitcoinNetwork * networks[4] = { &Mainnet, &Testnet, &Regtest, &Signet };
 const uint8_t networks_len = 4;

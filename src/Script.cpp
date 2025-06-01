@@ -145,7 +145,7 @@ void Script::fromAddress(const char * address){
         return;
     }
     ScriptType type = UNKNOWN_TYPE;
-    const Network * network;
+    const BitcoinNetwork * network;
     for(int i=0; i<networks_len; i++){
         if(memcmp(address, networks[i]->bech32, strlen(networks[i]->bech32))==0){
             type = P2WPKH;
@@ -364,7 +364,7 @@ ScriptType Script::type() const{
     }
     return UNKNOWN_TYPE;
 }
-size_t Script::address(char * buffer, size_t len, const Network * network) const{
+size_t Script::address(char * buffer, size_t len, const BitcoinNetwork * network) const{
     memset(buffer, 0, len);
     if(type() == P2PKH){
         uint8_t addr[21];
@@ -405,7 +405,7 @@ size_t Script::address(char * buffer, size_t len, const Network * network) const
     return 0;
 }
 #if USE_ARDUINO_STRING || USE_STD_STRING
-String Script::address(const Network * network) const{
+String Script::address(const BitcoinNetwork * network) const{
     char buffer[100] = { 0 };
     size_t l = address(buffer, sizeof(buffer), network);
     if(l == 0){

@@ -26,6 +26,8 @@
 #include "rand.h"
 #include "sha2.h"
 #include <string.h>
+#include esp_system.h
+extern uint32_t esp_random(void);
 
 // esp boards
 #if defined(ESP_PLATFORM)

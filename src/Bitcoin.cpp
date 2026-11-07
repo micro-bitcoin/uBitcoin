@@ -54,9 +54,11 @@ size_t mnemonicToEntropy(const char * mnemonic, size_t mnemonicLen, uint8_t * ou
     uint8_t res[33] = {0};
     int r = mnemonic_to_entropy(mnemonic, res);
     if(r == 0){
+        memzero(res, sizeof(res));
         return 0;
     }
     memcpy(output, res, entropy_len);
+    memzero(res, sizeof(res));
     return entropy_len;
 }
 #if USE_ARDUINO_STRING || USE_STD_STRING

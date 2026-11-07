@@ -253,6 +253,7 @@ int HDPrivateKey::fromSeed(const uint8_t * seed, size_t seedSize, const Network 
     memcpy(chainCode, raw+32, 32);
     pubKey = *this * GeneratorPoint;
     pubKey.compressed = true;
+    memzero(raw, sizeof(raw));
     return 1;
 }
 // int HDPrivateKey::fromSeed(const uint8_t seed[64], const Network * net){
@@ -286,6 +287,8 @@ int HDPrivateKey::fromMnemonic(const char * mnemonic, size_t mnemonicSize, const
         }
     }
     fromSeed(seed, sizeof(seed), net);
+    memzero(seed, sizeof(seed));
+    memzero(u, sizeof(u));
     return 1;
 }
 #if USE_ARDUINO_STRING || USE_STD_STRING
@@ -460,6 +463,8 @@ HDPrivateKey HDPrivateKey::child(uint32_t index, bool hardened) const{
     r.getSecret(secret);
     child.setSecret(secret);
     memzero(secret, 32);
+    memzero(data, sizeof(data));
+    memzero(raw, sizeof(raw));
     return child;
 }
 

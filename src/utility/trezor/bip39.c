@@ -123,14 +123,16 @@ int mnemonic_to_entropy(const char *mnemonic, uint8_t *entropy)
 	char current_word[10];
 	uint32_t j, k, ki, bi = 0;
 	uint8_t bits[32 + 1];
+	int result = 0;
 
 	memzero(bits, sizeof(bits));
+	memzero(current_word, sizeof(current_word));
 	i = 0;
 	while (mnemonic[i]) {
 		j = 0;
 		while (mnemonic[i] != ' ' && mnemonic[i] != 0) {
 			if (j >= sizeof(current_word) - 1) {
-				return 0;
+				goto done;
 			}
 			current_word[j] = mnemonic[i];
 			i++; j++;
@@ -142,7 +144,7 @@ int mnemonic_to_entropy(const char *mnemonic, uint8_t *entropy)
 		k = 0;
 		for (;;) {
 			if (!wordlist[k]) { // word not found
-				return 0;
+				goto done;
 			}
 			if (strcmp(current_word, wordlist[k]) == 0) { // word found on index k
 				for (ki = 0; ki < 11; ki++) {
@@ -157,31 +159,38 @@ int mnemonic_to_entropy(const char *mnemonic, uint8_t *entropy)
 		}
 	}
 	if (bi != n * 11) {
-		return 0;
+		goto done;
 	}
 	memcpy(entropy, bits, sizeof(bits));
-	return n * 11;
+	result = n * 11;
+done:
+	memzero(current_word, sizeof(current_word));
+	memzero(bits, sizeof(bits));
+	return result;
 }
 
 int mnemonic_check(const char *mnemonic)
 {
 	uint8_t bits[32 + 1];
+	int result = 0;
 	int seed_len = mnemonic_to_entropy(mnemonic, bits);
 	if (seed_len != (12 * 11) && seed_len != (18 * 11) && seed_len != (24 * 11)) {
-		return 0;
+		goto done;
 	}
 	int words = seed_len / 11;
 
 	uint8_t checksum = bits[words * 4 / 3];
 	sha256_Raw(bits, words * 4 / 3, bits);
 	if (words == 12) {
-		return (bits[0] & 0xF0) == (checksum & 0xF0); // compare first 4 bits
+		result = (bits[0] & 0xF0) == (checksum & 0xF0); // compare first 4 bits
 	} else if (words == 18) {
-		return (bits[0] & 0xFC) == (checksum & 0xFC); // compare first 6 bits
+		result = (bits[0] & 0xFC) == (checksum & 0xFC); // compare first 6 bits
 	} else if (words == 24) {
-		return bits[0] == checksum; // compare 8 bits
+		result = bits[0] == checksum; // compare 8 bits
 	}
-	return 0;
+done:
+	memzero(bits, sizeof(bits));
+	return result;
 }
 
 // passphrase must be at most 256 characters otherwise it would be truncated

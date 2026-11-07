@@ -55,9 +55,10 @@
 #define USE_BIP32_25519_CURVES    0
 #endif
 
-// implement BIP39 caching
+// implement BIP39 caching (off by default: the cache keeps mnemonics,
+// passphrases and seeds in static memory)
 #ifndef USE_BIP39_CACHE
-#define USE_BIP39_CACHE 1
+#define USE_BIP39_CACHE 0
 #define BIP39_CACHE_SIZE 4
 #endif
 
